@@ -2,6 +2,8 @@
     "domain": "mqtt-mediaplayer",
     "name": "MQTT Media Player",
     "documentation": "https://github.com/TroyFernandes/hass-mqtt-mediaplayer",
-    "requirements": [],
+    "requirements": [
+        "mqtt"
+    ],
     "codeowners": []
 }
