@@ -44,6 +44,8 @@ PREVIOUS_ACTION = "previous"
 PLAY_ACTION = "play"
 PAUSE_ACTION = "pause"
 VOLUME_ACTION = "volume"
+VOLUME_ACTION_TOPIC = "vol_topic"
+VOLUME_ACTION_PAYLOAD = "vol_payload"
 
 SUPPORT_MQTTMEDIAPLAYER = (
     SUPPORT_PAUSE
@@ -70,17 +72,20 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAY_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PAUSE_ACTION): cv.SCRIPT_SCHEMA,
-        vol.Optional(VOLUME_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(VOLUME_ACTION):
+            vol.All({
+                vol.Optional(VOLUME_ACTION_TOPIC): cv.string,
+                vol.Optional(VOLUME_ACTION_PAYLOAD): cv.string,
+            }),
     }
 )
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the MQTT Media Player platform."""
-
     mqtt = hass.components.mqtt
 
-    topics = config.get("topic")
+    topics = config.get(TOPICS)
     for key, value in topics.items():
         if key == "song_title":
             mqtt.subscribe(value, MQTTMediaPlayer.tracktitle_listener)
@@ -108,8 +113,18 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     pause_action = config.get(PAUSE_ACTION) 
     volume_action = config.get(VOLUME_ACTION)
 
+    vol_topic = None
+    vol_payload = None
+
+    vol_actions = config.get(VOLUME_ACTION)
+    for key, value in vol_actions.items():
+        if key == "vol_topic":
+            vol_topic = value
+        if key == "vol_payload":
+            vol_payload = value
+
     add_entities([MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, volume_action, mqtt, hass
+        entity_name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload,mqtt, hass
         )], )
 
 
@@ -127,7 +142,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     playerState = "paused"
     Self = None
 
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, volume_action, mqtt, hass):
+    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, mqtt, hass):
         """Initialize"""
         self._name = name
         self._muted = False
@@ -141,14 +156,16 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._previous_script = Script(hass, previous_action)
         self._play_script = Script(hass, play_action)
         self._pause_script = Script(hass, pause_action)
-        self._volume_script = Script(hass, volume_action)
+        self._vol_topic = vol_topic
+        self._vol_payload = vol_payload
         self._mqtt = mqtt
         MQTTMediaPlayer.Self = self
 
     def tracktitle_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songTitle = str(msg.payload)
-        MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+        if MQTTMediaPlayer:
+            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
 
     def artist_listener(msg):
         """Handle new MQTT Messages"""
@@ -161,7 +178,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def volume_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songVolume = int(msg.payload)
-        MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+        if MQTTMediaPlayer:
+            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
 
     def albumart_listener(msg):
         """Handle new MQTT Messages"""
@@ -170,7 +188,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def state_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.playerState  = str(msg.payload)
-        MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+        if MQTTMediaPlayer:
+            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
     
 
     def update(self):
@@ -264,8 +283,9 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self.set_volume_level(0)
 
     def set_volume_level(self, volume):
-        """Set volume level."""
-        self._mqtt.publish("musicbee/command", r'{"command":"volume_set", "args":{"volume":"' + str(volume) + r'"}}' )
+        """Set volume level."""        
+        #self._mqtt.publish("musicbee/command", r'{"command":"volume_set", "args":{"volume":"' + str(volume) + r'"}}' )
+        self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
         MQTTMediaPlayer.songVolume = volume
         self.schedule_update_ha_state(True)
 

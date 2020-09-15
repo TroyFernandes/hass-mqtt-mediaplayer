@@ -1,4 +1,4 @@
-# hass-mqtt-mediaplayer
+# hass-mqtt-mediaplayer (WORK IN PROGRESS)
 
 Allows you to use MQTT topics to fill out the information needed for the Home Assistant Media Player Entity
 
@@ -47,6 +47,9 @@ media_player:
       data:
         topic: "musicbee/command"
         payload: "{\"command\": \"pause\"}"
+    volume:
+      vol_topic: "musicbee/command"
+      vol_payload: "{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"
 
 
 ```
