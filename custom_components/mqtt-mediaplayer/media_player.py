@@ -250,7 +250,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         MQTTMediaPlayer.songVolume = newvolume
         _LOGGER.debug("Volume_up: " + str(newvolume))
         self.set_volume_level(newvolume)
-        self.schedule_update_ha_state(True)
 
     def volume_down(self):
         """Volume down media player."""
@@ -258,13 +257,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         MQTTMediaPlayer.songVolume = newvolume
         _LOGGER.debug("Volume_Down: " + str(newvolume)) 
         self.set_volume_level(newvolume)
-        self.schedule_update_ha_state(True)
 
     def mute_volume(self, mute):
         """Send mute command."""
         _LOGGER.debug("Volume_Down: " + str(mute))
         self.set_volume_level(0)
-        self.schedule_update_ha_state(True)
 
     def set_volume_level(self, volume):
         """Set volume level."""
