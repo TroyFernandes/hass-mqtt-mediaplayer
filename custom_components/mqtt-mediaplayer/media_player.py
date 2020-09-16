@@ -46,6 +46,7 @@ PAUSE_ACTION = "pause"
 VOLUME_ACTION = "volume"
 VOLUME_ACTION_TOPIC = "vol_topic"
 VOLUME_ACTION_PAYLOAD = "vol_payload"
+PLAYERSTATUS_KEYWORD = "status_keyword"
 
 SUPPORT_MQTTMEDIAPLAYER = (
     SUPPORT_PAUSE
@@ -77,6 +78,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(VOLUME_ACTION_TOPIC): cv.string,
                 vol.Optional(VOLUME_ACTION_PAYLOAD): cv.string,
             }),
+        vol.Optional(PLAYERSTATUS_KEYWORD): cv.string,
     }
 )
 
@@ -106,25 +108,25 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             mqtt.subscribe(value, MQTTMediaPlayer.state_listener)
     
     entity_name = config.get(CONF_NAME)
-
     next_action = config.get(NEXT_ACTION)
     previous_action = config.get(PREVIOUS_ACTION)
     play_action = config.get(PLAY_ACTION)
     pause_action = config.get(PAUSE_ACTION) 
     volume_action = config.get(VOLUME_ACTION)
-
     vol_topic = None
     vol_payload = None
+    player_status_keyword = config.get(PLAYERSTATUS_KEYWORD)
 
     vol_actions = config.get(VOLUME_ACTION)
-    for key, value in vol_actions.items():
-        if key == "vol_topic":
-            vol_topic = value
-        if key == "vol_payload":
-            vol_payload = value
+    if(vol_actions):
+        for key, value in vol_actions.items():
+            if key == "vol_topic":
+                vol_topic = value
+            if key == "vol_payload":
+                vol_payload = value
 
     add_entities([MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload,mqtt, hass
+        entity_name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass
         )], )
 
 
@@ -142,24 +144,37 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     playerState = "paused"
     Self = None
 
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, mqtt, hass):
+    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass):
         """Initialize"""
         self._name = name
-        self._muted = False
         self._volume = 0.0
-        self._track_id = 0
         self._track_name = ""
         self._track_artist = ""
         self._track_album_name = ""
         self._state = None
-        self._next_script = Script(hass, next_action)
-        self._previous_script = Script(hass, previous_action)
-        self._play_script = Script(hass, play_action)
-        self._pause_script = Script(hass, pause_action)
+
+        self._next_script = None
+        self._previous_script = None
+        self._play_script = None
+        self._pause_script = None
+
+        if(next_action):
+            self._next_script = Script(hass, next_action)
+        if(previous_action):
+            self._previous_script = Script(hass, previous_action)
+        if(play_action):
+            self._play_script = Script(hass, play_action)
+        if(pause_action):
+            self._pause_script = Script(hass, pause_action)
+        
         self._vol_topic = vol_topic
         self._vol_payload = vol_payload
+        self._player_status_keyword = player_status_keyword
+
+
         self._mqtt = mqtt
         MQTTMediaPlayer.Self = self
+        
 
     def tracktitle_listener(msg):
         """Handle new MQTT Messages"""
@@ -194,11 +209,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     def update(self):
         """ Update the States"""
-
-        if MQTTMediaPlayer.playerState == "true":
-            self._state = STATE_PLAYING
-        else:
-            self._state = STATE_PAUSED
+    
+        if self._player_status_keyword:
+            if MQTTMediaPlayer.playerState == self._player_status_keyword:
+                self._state = STATE_PLAYING
+            else:
+                self._state = STATE_PAUSED
 
 
         self._track_name = MQTTMediaPlayer.songTitle
@@ -277,17 +293,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         _LOGGER.debug("Volume_Down: " + str(newvolume)) 
         self.set_volume_level(newvolume)
 
-    def mute_volume(self, mute):
-        """Send mute command."""
-        _LOGGER.debug("Volume_Down: " + str(mute))
-        self.set_volume_level(0)
-
     def set_volume_level(self, volume):
         """Set volume level."""        
-        #self._mqtt.publish("musicbee/command", r'{"command":"volume_set", "args":{"volume":"' + str(volume) + r'"}}' )
-        self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
-        MQTTMediaPlayer.songVolume = volume
-        self.schedule_update_ha_state(True)
+        if(self._vol_payload):
+            self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
+            MQTTMediaPlayer.songVolume = volume
+            self.schedule_update_ha_state(True)
 
     async def media_play_pause(self):
         """Simulate play pause media player."""
@@ -298,18 +309,22 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def media_play(self):
         """Send play command."""
-        await self._play_script.async_run(context=self._context)
-        self._state = STATE_PLAYING
+        if(self._play_script):
+            await self._play_script.async_run(context=self._context)
+            self._state = STATE_PLAYING
 
     async def media_pause(self):
         """Send media pause command to media player."""
-        await self._pause_script.async_run(context=self._context)
-        self._state = STATE_PAUSED
+        if(self._pause_script):
+            await self._pause_script.async_run(context=self._context)
+            self._state = STATE_PAUSED
 
     async def media_next_track(self):
         """Send next track command."""
-        await self._next_script.async_run(context=self._context)
+        if(self._next_script):
+            await self._next_script.async_run(context=self._context)
 
     async def media_previous_track(self):
         """Send the previous track command."""
-        await self._previous_script.async_run(context=self._context)
+        if(self._previous_script):
+            await self._previous_script.async_run(context=self._context)
