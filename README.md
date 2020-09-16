@@ -74,3 +74,18 @@ media_player:
         payload: "{\"command\": \"pause\"}"
 
 ```
+
+## Example MQTT Broker
+
+This is what my player outputs and what I see when I use MQTT Explorer
+
+```
+musicbee
+	playing = true
+	songtitle = Repeat After Me (Interlude)
+	artist = The Weeknd
+	volume = 86
+	album = After Hours
+	command = {"command": "next"}
+	albumart = /9j/4AAQSkZJRgABAQEASABI ...
+```
