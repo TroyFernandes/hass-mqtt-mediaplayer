@@ -36,6 +36,7 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 
 
 ## Example customize.yaml
+
 ```yaml
 media_player:  
   - platform: mqtt-mediaplayer
@@ -47,6 +48,10 @@ media_player:
       song_volume: "musicbee/volume"
       album_art: "musicbee/albumart"
       player_status: "musicbee/playing"
+    volume:
+      vol_topic: "musicbee/command"
+      vol_payload: "{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"
+    status_keyword: "true"
     next:
       service: mqtt.publish
       data:
@@ -67,9 +72,5 @@ media_player:
       data:
         topic: "musicbee/command"
         payload: "{\"command\": \"pause\"}"
-    volume:
-      vol_topic: "musicbee/command"
-      vol_payload: "{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"
-
 
 ```
