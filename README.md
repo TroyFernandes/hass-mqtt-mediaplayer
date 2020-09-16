@@ -1,4 +1,4 @@
-# hass-mqtt-mediaplayer (WORK IN PROGRESS)
+# hass-mqtt-mediaplayer
 
 Allows you to use MQTT topics to fill out the information needed for the Home Assistant Media Player Entity
 
@@ -27,14 +27,20 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 | album_art      | string                                                                    | optional | Topic to listen to for the song album art (Must be a base64 encoded string)       | string (base64 encoded url) | ```"musicbee/albumart"```                                               |
 | player_status  | string                                                                    | optional | Topic to listen to for the player status (playing/paused)                         | string                      | ```"musicbee/player_status"```                                          |
 | vol_topic      | string                                                                    | optional | Topic to publish a change in the player volume                                    | string                      | ```"musicbee/command"```                                                |
-| vol_payload    | string                                                                    | optional | Payload to publish (put the keyword "VOL_VAL" where the volume is supposed to be) | string                      | ```"{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"``` |
-| status_keyword | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                                                            |
+| vol_payload*    | string                                                                    | optional | Payload to publish (put the keyword "VOL_VAL" where the volume is supposed to be) | string                      | ```"{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"``` |
+| status_keyword* | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                                                            |
 | next           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "next" button is pressed                            | N/A                         | * see customize.yaml ex.                                                |
 | previous       | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "previous" button is pressed                        | N/A                         | * see customize.yaml ex.                                                |
 | play           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "play" button is pressed                            | N/A                         | * see customize.yaml ex.                                                |
 | pause          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "pause" button is pressed                           | N/A                         | * see customize.yaml ex.                                                |
 
+*NOTES:
 
+ * vol_payload: the component will replace the part of the payload specified with VOL_VAL with the proper value. For example, if your media player expects a payload in the format  of ```{"command": "volume_set","args": {"volume": "0.78"}}``` you must enter it in your customize.yaml like the example above: ```"{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"``` (escaping all necessary quotes)
+ * status_keyword: This is the keyword your player publishes when it is PLAYING. You only need to mention the keyword for playing. For example, my player indicates it is playing by publishing ```playing = true``` to my broker. Therefore I enter ```"true"``` in my customize.yaml
+ 
+ 
+ 
 ## Example customize.yaml
 
 ```yaml
