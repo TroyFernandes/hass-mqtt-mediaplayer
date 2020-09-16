@@ -43,6 +43,8 @@ NEXT_ACTION = "next"
 PREVIOUS_ACTION = "previous"
 PLAY_ACTION = "play"
 PAUSE_ACTION = "pause"
+VOL_DOWN_ACTION = "vol_down"
+VOL_UP_ACTION = "vol_up"
 VOLUME_ACTION = "volume"
 VOLUME_ACTION_TOPIC = "vol_topic"
 VOLUME_ACTION_PAYLOAD = "vol_payload"
@@ -73,6 +75,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAY_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PAUSE_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(VOL_DOWN_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(VOL_UP_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOLUME_ACTION):
             vol.All({
                 vol.Optional(VOLUME_ACTION_TOPIC): cv.string,
@@ -112,6 +116,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     previous_action = config.get(PREVIOUS_ACTION)
     play_action = config.get(PLAY_ACTION)
     pause_action = config.get(PAUSE_ACTION) 
+    vol_down_action = config.get(VOL_DOWN_ACTION)
+    vol_up_action = config.get(VOL_UP_ACTION)
     volume_action = config.get(VOLUME_ACTION)
     vol_topic = None
     vol_payload = None
@@ -126,7 +132,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 vol_payload = value
 
     add_entities([MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass
+        entity_name, next_action, previous_action, play_action, pause_action, vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass
         )], )
 
 
@@ -144,7 +150,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     playerState = "paused"
     Self = None
 
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass):
+    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass):
         """Initialize"""
         self._name = name
         self._volume = 0.0
@@ -157,6 +163,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._previous_script = None
         self._play_script = None
         self._pause_script = None
+        self._vol_down_action = None
+        self._vol_up_action = None
 
         if(next_action):
             self._next_script = Script(hass, next_action)
@@ -166,7 +174,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._play_script = Script(hass, play_action)
         if(pause_action):
             self._pause_script = Script(hass, pause_action)
-        
+        if(vol_down_action):
+            self._vol_down_action = Script(hass, vol_down_action)
+        if(vol_up_action):
+            self._vol_up_action = Script(hass, vol_up_action)        
+     
+
         self._vol_topic = vol_topic
         self._vol_payload = vol_payload
         self._player_status_keyword = player_status_keyword
@@ -279,22 +292,31 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             return (MQTTMediaPlayer.songAlbumArt, "image/jpeg")
         return None, None
 
-    def volume_up(self):
+    async def volume_up(self):
         """Volume up the media player."""
-        newvolume = min(MQTTMediaPlayer.songVolume + 5, 100)
-        MQTTMediaPlayer.songVolume = newvolume
-        _LOGGER.debug("Volume_up: " + str(newvolume))
-        self.set_volume_level(newvolume)
+        if(self._vol_up_action):
+            await self._vol_up_action.async_run(context=self._context)
+        else:
+            newvolume = min(MQTTMediaPlayer.songVolume + 5, 100)
+            MQTTMediaPlayer.songVolume = newvolume
+            #_LOGGER.debug("Volume_up: " + str(newvolume))
+            self.set_volume_level(newvolume)
 
-    def volume_down(self):
+    async def volume_down(self):
         """Volume down media player."""
-        newvolume = max(MQTTMediaPlayer.songVolume - 5, 0)
-        MQTTMediaPlayer.songVolume = newvolume
-        _LOGGER.debug("Volume_Down: " + str(newvolume)) 
-        self.set_volume_level(newvolume)
+
+        if(self._vol_down_action):
+            await self._vol_down_action.async_run(context=self._context)
+        else:
+            newvolume = max(MQTTMediaPlayer.songVolume - 5, 0)
+            MQTTMediaPlayer.songVolume = newvolume
+            #_LOGGER.debug("Volume_Down: " + str(newvolume)) 
+            self.set_volume_level(newvolume)
 
     def set_volume_level(self, volume):
-        """Set volume level."""        
+        """Set volume level."""
+        if(self._vol_down_action or self._vol_down_action):
+            return
         if(self._vol_payload):
             self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
             MQTTMediaPlayer.songVolume = volume
