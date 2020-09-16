@@ -176,31 +176,31 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         MQTTMediaPlayer.Self = self
         
 
-    async def tracktitle_listener(msg):
+    def tracktitle_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songTitle = str(msg.payload)
         if MQTTMediaPlayer:
             MQTTMediaPlayer.Self.schedule_update_ha_state(True)
 
-    async def artist_listener(msg):
+    def artist_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songArtist = str(msg.payload)
 
-    async def album_listener(msg):
+    def album_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songAlbum = str(msg.payload)
 
-    async def volume_listener(msg):
+    def volume_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songVolume = int(msg.payload)
         if MQTTMediaPlayer:
             MQTTMediaPlayer.Self.schedule_update_ha_state(True)
 
-    async def albumart_listener(msg):
+    def albumart_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.songAlbumArt  = base64.b64decode(msg.payload.replace("\n",""))
 
-    async def state_listener(msg):
+    def state_listener(msg):
         """Handle new MQTT Messages"""
         MQTTMediaPlayer.playerState  = str(msg.payload)
         if MQTTMediaPlayer:
