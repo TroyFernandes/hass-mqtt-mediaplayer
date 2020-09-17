@@ -40,7 +40,7 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 
  * vol_payload: the component will replace the part of the payload specified with VOL_VAL with the proper value. For example, if your media player expects a payload in the format  of ```{"command": "volume_set","args": {"volume": "0.78"}}``` you must enter it in your customize.yaml like the example above: ```"{\"command\":\"volume_set\", \"args\":{\"volume\":\"VOL_VAL\"}}"``` (escaping all necessary quotes)
  * status_keyword: This is the keyword your player publishes when it is PLAYING. You only need to mention the keyword for playing. For example, my player indicates it is playing by publishing ```playing = true``` to my broker. Therefore I enter ```"true"``` in my customize.yaml
- * vol_up/vol_down: Setting this disables the volume_set service. Use vol_up/vol_down if your media player doesn't publish a volume level (i.e if your media player only responds to simple "volumeup"/"volumedown" commands. 
+ * vol_up/vol_down: Setting this disables the volume_set service. Use vol_up/vol_down if your media player doesn't publish a volume level (i.e if your media player only responds to simple "volumeup"/"volumedown" commands. **If you use vol_topic & vol_payload DONT use vol_up/vol_down. Same for the reverse**
  
  
  
