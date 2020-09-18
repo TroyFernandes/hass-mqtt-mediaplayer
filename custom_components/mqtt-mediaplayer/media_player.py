@@ -309,7 +309,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if(self._vol_payload):
             self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
             self._volume = volume
-            self.schedule_update_ha_state(True)
 
     async def media_play_pause(self):
         """Simulate play pause media player."""
