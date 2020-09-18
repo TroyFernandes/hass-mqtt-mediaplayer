@@ -1,5 +1,4 @@
 """ mqtt-mediaplayer """
-from datetime import timedelta
 import logging
 import homeassistant.loader as loader
 import hashlib
@@ -91,26 +90,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the MQTT Media Player platform."""
     mqtt = hass.components.mqtt
 
-    topics = config.get(TOPICS)
-    for key, value in topics.items():
-        if key == "song_title":
-            mqtt.subscribe(value, MQTTMediaPlayer.tracktitle_listener)
-
-        if key == "song_artist":
-            mqtt.subscribe(value, MQTTMediaPlayer.artist_listener)
-
-        if key == "song_album":
-            mqtt.subscribe(value, MQTTMediaPlayer.album_listener)
-
-        if key == "song_volume":
-            mqtt.subscribe(value, MQTTMediaPlayer.volume_listener)
-
-        if key == "album_art":
-            mqtt.subscribe(value, MQTTMediaPlayer.albumart_listener)
-
-        if key == "player_status":
-            mqtt.subscribe(value, MQTTMediaPlayer.state_listener)
-    
+    topics = config.get(TOPICS)    
     entity_name = config.get(CONF_NAME)
     next_action = config.get(NEXT_ACTION)
     previous_action = config.get(PREVIOUS_ACTION)
@@ -132,7 +112,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 vol_payload = value
 
     add_entities([MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass
+        entity_name, next_action, previous_action, play_action, pause_action, 
+        vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, 
+        topics, mqtt, hass
         )], )
 
 
@@ -142,23 +124,18 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     """MQTTMediaPlayer"""
 
-    songTitle = ""
-    songArtist = ""
-    songAlbum = ""
-    songVolume = 0.0
-    songAlbumArt = None
-    playerState = "paused"
-    Self = None
-
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, mqtt, hass):
+    def __init__(self, name, next_action, previous_action, play_action, pause_action, 
+    vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, 
+    topics, mqtt, hass):
         """Initialize"""
         self._name = name
         self._volume = 0.0
         self._track_name = ""
         self._track_artist = ""
         self._track_album_name = ""
+        self._mqtt_player_state = None
         self._state = None
-
+        self._album_art = None
         self._next_script = None
         self._previous_script = None
         self._play_script = None
@@ -184,56 +161,68 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._vol_payload = vol_payload
         self._player_status_keyword = player_status_keyword
 
+        for key, value in topics.items():
+            if key == "song_title":
+                mqtt.subscribe(value, self.tracktitle_listener)
+
+            if key == "song_artist":
+                mqtt.subscribe(value, self.artist_listener)
+
+            if key == "song_album":
+                mqtt.subscribe(value, self.album_listener)
+
+            if key == "song_volume":
+                mqtt.subscribe(value, self.volume_listener)
+
+            if key == "album_art":
+                mqtt.subscribe(value, self.albumart_listener)
+
+            if key == "player_status":
+                mqtt.subscribe(value, self.state_listener)
 
         self._mqtt = mqtt
-        MQTTMediaPlayer.Self = self
+
+        
         
 
-    def tracktitle_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.songTitle = str(msg.payload)
+    async def tracktitle_listener(self, msg):
+        """Listen for the Track Title change"""
+        self._track_name = str(msg.payload)
         if MQTTMediaPlayer:
-            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
 
-    def artist_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.songArtist = str(msg.payload)
+    async def artist_listener(self, msg):
+        """Listen for the Artis Name change"""
+        self._track_artist = str(msg.payload)
 
-    def album_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.songAlbum = str(msg.payload)
+    async def album_listener(self, msg):
+        """Listen for the Album Name change"""
+        self._track_album_name = str(msg.payload)
 
-    def volume_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.songVolume = int(msg.payload)
+    async def volume_listener(self, msg):
+        """Listen for Player Volume changes"""
+        self._volume = int(msg.payload)
         if MQTTMediaPlayer:
-            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
 
-    def albumart_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.songAlbumArt  = base64.b64decode(msg.payload.replace("\n",""))
+    async def albumart_listener(self, msg):
+        """Listen for the Album Art change"""
+        self._album_art  = base64.b64decode(msg.payload.replace("\n",""))
 
-    def state_listener(msg):
-        """Handle new MQTT Messages"""
-        MQTTMediaPlayer.playerState  = str(msg.payload)
+    async def state_listener(self, msg):
+        """Listen for Player State changes"""
+        self._mqtt_player_state  = str(msg.payload)
         if MQTTMediaPlayer:
-            MQTTMediaPlayer.Self.schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
     
 
     def update(self):
         """ Update the States"""
-    
         if self._player_status_keyword:
-            if MQTTMediaPlayer.playerState == self._player_status_keyword:
+            if self._mqtt_player_state == self._player_status_keyword:
                 self._state = STATE_PLAYING
             else:
                 self._state = STATE_PAUSED
-
-
-        self._track_name = MQTTMediaPlayer.songTitle
-        self._track_artist = MQTTMediaPlayer.songArtist
-        self._track_album_name = MQTTMediaPlayer.songAlbum
-        self._volume = MQTTMediaPlayer.songVolume
 
     @property
     def should_poll(self):
@@ -282,14 +271,14 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     @property
     def media_image_hash(self):
         """Hash value for media image."""
-        if MQTTMediaPlayer.songAlbumArt:
-            return hashlib.md5(MQTTMediaPlayer.songAlbumArt).hexdigest()[:5]       
+        if self._album_art:
+            return hashlib.md5(self._album_art).hexdigest()[:5]       
         return None
 
     async def async_get_media_image(self):
         """Fetch media image of current playing image."""
-        if MQTTMediaPlayer.songAlbumArt:
-            return (MQTTMediaPlayer.songAlbumArt, "image/jpeg")
+        if self._album_art:
+            return (self._album_art, "image/jpeg")
         return None, None
 
     async def volume_up(self):
@@ -297,8 +286,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if(self._vol_up_action):
             await self._vol_up_action.async_run(context=self._context)
         else:
-            newvolume = min(MQTTMediaPlayer.songVolume + 5, 100)
-            MQTTMediaPlayer.songVolume = newvolume
+            newvolume = min(self._volume + 5, 100)
+            self._volume = newvolume
             #_LOGGER.debug("Volume_up: " + str(newvolume))
             self.set_volume_level(newvolume)
 
@@ -308,8 +297,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if(self._vol_down_action):
             await self._vol_down_action.async_run(context=self._context)
         else:
-            newvolume = max(MQTTMediaPlayer.songVolume - 5, 0)
-            MQTTMediaPlayer.songVolume = newvolume
+            newvolume = max(self._volume - 5, 0)
+            self._volume = newvolume
             #_LOGGER.debug("Volume_Down: " + str(newvolume)) 
             self.set_volume_level(newvolume)
 
@@ -319,7 +308,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             return
         if(self._vol_payload):
             self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
-            MQTTMediaPlayer.songVolume = volume
+            self._volume = volume
             self.schedule_update_ha_state(True)
 
     async def media_play_pause(self):
