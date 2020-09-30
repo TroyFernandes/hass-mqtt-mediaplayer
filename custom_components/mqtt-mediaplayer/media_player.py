@@ -170,22 +170,18 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         for key, value in topics.items():
             if key == "song_title":
                 result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.tracktitle_listener)
-                result.async_refresh()
                 self.async_on_remove(result.async_remove)
 
             if key == "song_artist":
                 result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.artist_listener)
-                result.async_refresh()
                 self.async_on_remove(result.async_remove)
 
             if key == "song_album":
                 result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
-                result.async_refresh()
                 self.async_on_remove(result.async_remove)
 
             if key == "song_volume":
                 result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
-                result.async_refresh()
                 self.async_on_remove(result.async_remove)
 
             if key == "album_art":
@@ -193,7 +189,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
             if key == "player_status":
                 result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
-                result.async_refresh()
                 self.async_on_remove(result.async_remove)
 
         self._mqtt = mqtt
