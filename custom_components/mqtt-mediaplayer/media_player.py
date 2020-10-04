@@ -61,7 +61,7 @@ SUPPORT_MQTTMEDIAPLAYER = (
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_NAME): cv.string,
-        vol.Required(TOPICS):
+        vol.Optional(TOPICS):
             vol.All({
                 vol.Optional(SONGTITLE_T): cv.template,
                 vol.Optional(SONGARTIST_T): cv.template,
@@ -150,34 +150,35 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
         self._player_status_keyword = player_status_keyword
 
-        for key, value in topics.items():
-            
-            if key == "song_title":
-                result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.tracktitle_listener)
-                self.async_on_remove(result.async_remove)
+        if topics is not None:
+            for key, value in topics.items():
+                
+                if key == "song_title":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.tracktitle_listener)
+                    self.async_on_remove(result.async_remove)
 
-            if key == "song_artist":
-                result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.artist_listener)
-                self.async_on_remove(result.async_remove)
+                if key == "song_artist":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.artist_listener)
+                    self.async_on_remove(result.async_remove)
 
-            if key == "song_album":
-                result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
-                self.async_on_remove(result.async_remove)
+                if key == "song_album":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
+                    self.async_on_remove(result.async_remove)
 
-            if key == "song_volume":
-                result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
-                self.async_on_remove(result.async_remove)
+                if key == "song_volume":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
+                    self.async_on_remove(result.async_remove)
 
-            if key == "album_art":
-                mqtt.subscribe(value, self.albumart_listener)
+                if key == "album_art":
+                    mqtt.subscribe(value, self.albumart_listener)
 
-            if key == "player_status":
-                result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
-                self.async_on_remove(result.async_remove)
+                if key == "player_status":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
+                    self.async_on_remove(result.async_remove)
 
-            if key == "volume":
-                #_LOGGER.debug("key : " + str(key) + " value: " + str(value))
-                self._vol_script = Script(hass, value, self._name, self._domain)
+                if key == "volume":
+                    #_LOGGER.debug("key : " + str(key) + " value: " + str(value))
+                    self._vol_script = Script(hass, value, self._name, self._domain)
 
 
 
