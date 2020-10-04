@@ -61,7 +61,7 @@ SUPPORT_MQTTMEDIAPLAYER = (
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_NAME): cv.string,
-        vol.Required(TOPICS):
+        vol.Optional(TOPICS):
             vol.All({
                 vol.Optional(SONGTITLE_T): cv.string,
                 vol.Optional(SONGARTIST_T): cv.string,
@@ -129,6 +129,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     topics, mqtt, hass):
         """Initialize"""
         self._name = name
+        self._domain = __name__.split(".")[-2]
         self._volume = 0.0
         self._track_name = ""
         self._track_artist = ""
@@ -144,41 +145,42 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._vol_up_action = None
 
         if(next_action):
-            self._next_script = Script(hass, next_action)
+            self._next_script = Script(hass, next_action, self._name, self._domain)
         if(previous_action):
-            self._previous_script = Script(hass, previous_action)
+            self._previous_script = Script(hass, previous_action, self._name, self._domain)
         if(play_action):
-            self._play_script = Script(hass, play_action)
+            self._play_script = Script(hass, play_action, self._name, self._domain)
         if(pause_action):
-            self._pause_script = Script(hass, pause_action)
+            self._pause_script = Script(hass, pause_action, self._name, self._domain)
         if(vol_down_action):
-            self._vol_down_action = Script(hass, vol_down_action)
+            self._vol_down_action = Script(hass, vol_down_action, self._name, self._domain)
         if(vol_up_action):
-            self._vol_up_action = Script(hass, vol_up_action)        
+            self._vol_up_action = Script(hass, vol_up_action, self._name, self._domain)        
      
 
         self._vol_topic = vol_topic
         self._vol_payload = vol_payload
         self._player_status_keyword = player_status_keyword
 
-        for key, value in topics.items():
-            if key == "song_title":
-                mqtt.subscribe(value, self.tracktitle_listener)
+        if topics is not None:
+            for key, value in topics.items():
+                if key == "song_title":
+                    mqtt.subscribe(value, self.tracktitle_listener)
 
-            if key == "song_artist":
-                mqtt.subscribe(value, self.artist_listener)
+                if key == "song_artist":
+                    mqtt.subscribe(value, self.artist_listener)
 
-            if key == "song_album":
-                mqtt.subscribe(value, self.album_listener)
+                if key == "song_album":
+                    mqtt.subscribe(value, self.album_listener)
 
-            if key == "song_volume":
-                mqtt.subscribe(value, self.volume_listener)
+                if key == "song_volume":
+                    mqtt.subscribe(value, self.volume_listener)
 
-            if key == "album_art":
-                mqtt.subscribe(value, self.albumart_listener)
+                if key == "album_art":
+                    mqtt.subscribe(value, self.albumart_listener)
 
-            if key == "player_status":
-                mqtt.subscribe(value, self.state_listener)
+                if key == "player_status":
+                    mqtt.subscribe(value, self.state_listener)
 
         self._mqtt = mqtt
 
