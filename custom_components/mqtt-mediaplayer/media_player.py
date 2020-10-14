@@ -118,6 +118,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self.hass = hass
         self._domain = __name__.split(".")[-2]
         self._name = name
+        self._domain = __name__.split(".")[-2]
         self._volume = 0.0
         self._track_name = ""
         self._track_artist = ""
@@ -175,6 +176,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                 if key == "player_status":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
                     self.async_on_remove(result.async_remove)
+
 
                 if key == "volume":
                     #_LOGGER.debug("key : " + str(key) + " value: " + str(value))
