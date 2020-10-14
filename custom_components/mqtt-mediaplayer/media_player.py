@@ -4,7 +4,9 @@ import homeassistant.loader as loader
 import hashlib
 import voluptuous as vol
 import base64
+from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
 from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MUSIC,
@@ -45,8 +47,6 @@ PAUSE_ACTION = "pause"
 VOL_DOWN_ACTION = "vol_down"
 VOL_UP_ACTION = "vol_up"
 VOLUME_ACTION = "volume"
-VOLUME_ACTION_TOPIC = "vol_topic"
-VOLUME_ACTION_PAYLOAD = "vol_payload"
 PLAYERSTATUS_KEYWORD = "status_keyword"
 
 SUPPORT_MQTTMEDIAPLAYER = (
@@ -63,12 +63,13 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_NAME): cv.string,
         vol.Optional(TOPICS):
             vol.All({
-                vol.Optional(SONGTITLE_T): cv.string,
-                vol.Optional(SONGARTIST_T): cv.string,
-                vol.Optional(SONGALBUM_T): cv.string,
-                vol.Optional(SONGVOL_T): cv.string,
+                vol.Optional(SONGTITLE_T): cv.template,
+                vol.Optional(SONGARTIST_T): cv.template,
+                vol.Optional(SONGALBUM_T): cv.template,
+                vol.Optional(SONGVOL_T): cv.template,
                 vol.Optional(ALBUMART_T): cv.string,
-                vol.Optional(PLAYERSTATUS_T): cv.string,
+                vol.Optional(PLAYERSTATUS_T): cv.template,
+                vol.Optional(VOLUME_ACTION): cv.SCRIPT_SCHEMA
             }),
         vol.Optional(NEXT_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
@@ -76,11 +77,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(PAUSE_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_DOWN_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_UP_ACTION): cv.SCRIPT_SCHEMA,
-        vol.Optional(VOLUME_ACTION):
-            vol.All({
-                vol.Optional(VOLUME_ACTION_TOPIC): cv.string,
-                vol.Optional(VOLUME_ACTION_PAYLOAD): cv.string,
-            }),
         vol.Optional(PLAYERSTATUS_KEYWORD): cv.string,
     }
 )
@@ -99,21 +95,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     vol_down_action = config.get(VOL_DOWN_ACTION)
     vol_up_action = config.get(VOL_UP_ACTION)
     volume_action = config.get(VOLUME_ACTION)
-    vol_topic = None
-    vol_payload = None
     player_status_keyword = config.get(PLAYERSTATUS_KEYWORD)
 
-    vol_actions = config.get(VOLUME_ACTION)
-    if(vol_actions):
-        for key, value in vol_actions.items():
-            if key == "vol_topic":
-                vol_topic = value
-            if key == "vol_payload":
-                vol_payload = value
 
     add_entities([MQTTMediaPlayer(
         entity_name, next_action, previous_action, play_action, pause_action, 
-        vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, 
+        vol_down_action, vol_up_action, player_status_keyword, 
         topics, mqtt, hass
         )], )
 
@@ -125,9 +112,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     """MQTTMediaPlayer"""
 
     def __init__(self, name, next_action, previous_action, play_action, pause_action, 
-    vol_down_action, vol_up_action, vol_topic, vol_payload, player_status_keyword, 
+    vol_down_action, vol_up_action, player_status_keyword, 
     topics, mqtt, hass):
         """Initialize"""
+        self.hass = hass
+        self._domain = __name__.split(".")[-2]
         self._name = name
         self._domain = __name__.split(".")[-2]
         self._volume = 0.0
@@ -143,6 +132,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._pause_script = None
         self._vol_down_action = None
         self._vol_up_action = None
+        self._vol_script = None
+
 
         if(next_action):
             self._next_script = Script(hass, next_action, self._name, self._domain)
@@ -158,62 +149,74 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._vol_up_action = Script(hass, vol_up_action, self._name, self._domain)        
      
 
-        self._vol_topic = vol_topic
-        self._vol_payload = vol_payload
         self._player_status_keyword = player_status_keyword
 
         if topics is not None:
             for key, value in topics.items():
+                
                 if key == "song_title":
-                    mqtt.subscribe(value, self.tracktitle_listener)
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.tracktitle_listener)
+                    self.async_on_remove(result.async_remove)
 
                 if key == "song_artist":
-                    mqtt.subscribe(value, self.artist_listener)
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.artist_listener)
+                    self.async_on_remove(result.async_remove)
 
                 if key == "song_album":
-                    mqtt.subscribe(value, self.album_listener)
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
+                    self.async_on_remove(result.async_remove)
 
                 if key == "song_volume":
-                    mqtt.subscribe(value, self.volume_listener)
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
+                    self.async_on_remove(result.async_remove)
 
                 if key == "album_art":
                     mqtt.subscribe(value, self.albumart_listener)
 
                 if key == "player_status":
-                    mqtt.subscribe(value, self.state_listener)
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
+                    self.async_on_remove(result.async_remove)
 
-        self._mqtt = mqtt
 
-        
-        
+                if key == "volume":
+                    #_LOGGER.debug("key : " + str(key) + " value: " + str(value))
+                    self._vol_script = Script(hass, value, self._name, self._domain)
 
-    async def tracktitle_listener(self, msg):
+
+
+    async def tracktitle_listener(self, event, updates):
         """Listen for the Track Title change"""
-        self._track_name = str(msg.payload)
+        result = updates.pop().result
+        self._track_name = result
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
-    async def artist_listener(self, msg):
+    async def artist_listener(self, event, updates):
         """Listen for the Artis Name change"""
-        self._track_artist = str(msg.payload)
+        result = updates.pop().result
+        self._track_artist = result
 
-    async def album_listener(self, msg):
+    async def album_listener(self, event, updates):
         """Listen for the Album Name change"""
-        self._track_album_name = str(msg.payload)
+        result = updates.pop().result
+        self._track_album_name = result
 
-    async def volume_listener(self, msg):
+    async def volume_listener(self, event, updates):
         """Listen for Player Volume changes"""
-        self._volume = int(msg.payload)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        result = updates.pop().result
+        if result.isdigit():
+            self._volume = int(result)
+            if MQTTMediaPlayer:
+                self.schedule_update_ha_state(True)
 
     async def albumart_listener(self, msg):
         """Listen for the Album Art change"""
         self._album_art  = base64.b64decode(msg.payload.replace("\n",""))
 
-    async def state_listener(self, msg):
+    async def state_listener(self, event, updates):
         """Listen for Player State changes"""
-        self._mqtt_player_state  = str(msg.payload)
+        result = updates.pop().result
+        self._mqtt_player_state  = str(result)
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
     
@@ -304,12 +307,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             #_LOGGER.debug("Volume_Down: " + str(newvolume)) 
             self.set_volume_level(newvolume)
 
-    def set_volume_level(self, volume):
+    async def set_volume_level(self, volume):
         """Set volume level."""
         if(self._vol_down_action or self._vol_down_action):
             return
-        if(self._vol_payload):
-            self._mqtt.publish(self._vol_topic, self._vol_payload.replace("VOL_VAL", str(volume)))
+        if(self._vol_script):
+            await self._vol_script.async_run({"volume": volume}, context=self._context)
             self._volume = volume
 
     async def media_play_pause(self):
