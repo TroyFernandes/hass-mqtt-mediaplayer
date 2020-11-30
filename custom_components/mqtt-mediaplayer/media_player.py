@@ -177,7 +177,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     self.async_on_remove(result.async_remove)
 
                 if key == "volume":
-                    #_LOGGER.debug("key : " + str(key) + " value: " + str(value))
                     self._vol_script = Script(hass, value, self._name, self._domain)
 
 
@@ -202,7 +201,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     async def volume_listener(self, event, updates):
         """Listen for Player Volume changes"""
         result = updates.pop().result
-        if result.isdigit():
+        _LOGGER.debug("Volume Listener: " + str(result))
+        if isinstance(result, int):
             self._volume = int(result)
             if MQTTMediaPlayer:
                 self.schedule_update_ha_state(True)
@@ -284,28 +284,25 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             return (self._album_art, "image/jpeg")
         return None, None
 
-    async def volume_up(self):
+    async def async_volume_up(self):
         """Volume up the media player."""
         if(self._vol_up_action):
             await self._vol_up_action.async_run(context=self._context)
         else:
             newvolume = min(self._volume + 5, 100)
             self._volume = newvolume
-            #_LOGGER.debug("Volume_up: " + str(newvolume))
-            self.set_volume_level(newvolume)
+            await self.async_set_volume_level(newvolume)
 
-    async def volume_down(self):
+    async def async_volume_down(self):
         """Volume down media player."""
-
         if(self._vol_down_action):
             await self._vol_down_action.async_run(context=self._context)
         else:
             newvolume = max(self._volume - 5, 0)
             self._volume = newvolume
-            #_LOGGER.debug("Volume_Down: " + str(newvolume)) 
-            self.set_volume_level(newvolume)
+            await self.async_set_volume_level(newvolume)
 
-    async def set_volume_level(self, volume):
+    async def async_set_volume_level(self, volume):
         """Set volume level."""
         if(self._vol_down_action or self._vol_down_action):
             return
@@ -313,31 +310,31 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             await self._vol_script.async_run({"volume": volume}, context=self._context)
             self._volume = volume
 
-    async def media_play_pause(self):
+    async def async_media_play_pause(self):
         """Simulate play pause media player."""
         if self._state == STATE_PLAYING:
-            await self.media_pause()
+            await self.async_media_pause()
         else:
-            await self.media_play()
+            await self.async_media_play()
 
-    async def media_play(self):
+    async def async_media_play(self):
         """Send play command."""
         if(self._play_script):
             await self._play_script.async_run(context=self._context)
             self._state = STATE_PLAYING
 
-    async def media_pause(self):
+    async def async_media_pause(self):
         """Send media pause command to media player."""
         if(self._pause_script):
             await self._pause_script.async_run(context=self._context)
             self._state = STATE_PAUSED
 
-    async def media_next_track(self):
+    async def async_media_next_track(self):
         """Send next track command."""
         if(self._next_script):
             await self._next_script.async_run(context=self._context)
 
-    async def media_previous_track(self):
+    async def async_media_previous_track(self):
         """Send the previous track command."""
         if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
