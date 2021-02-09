@@ -22,6 +22,7 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_PAUSED,
     STATE_PLAYING,
+    STATE_IDLE,
 )
 import homeassistant.helpers.config_validation as cv
 
@@ -222,10 +223,14 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def update(self):
         """ Update the States"""
         if self._player_status_keyword:
-            if self._mqtt_player_state == self._player_status_keyword:
+            if self._mqtt_player_state == 'playing':
                 self._state = STATE_PLAYING
-            else:
+            elif self._mqtt_player_state == 'paused':
                 self._state = STATE_PAUSED
+            elif self._mqtt_player_state == 'idle':
+                self._state = STATE_IDLE
+            elif self._mqtt_player_state == 'off':
+                self._state = STATE_OFF
 
     @property
     def should_poll(self):
@@ -338,3 +343,4 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Send the previous track command."""
         if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
+
