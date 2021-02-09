@@ -92,6 +92,7 @@ This is what my player outputs and what I see when I use MQTT Explorer
 ```
 musicbee
 	playing = true
+	player_status = "paused"
 	songtitle = Repeat After Me (Interlude)
 	artist = The Weeknd
 	volume = 86
