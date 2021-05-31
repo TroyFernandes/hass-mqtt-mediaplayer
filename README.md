@@ -25,7 +25,7 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 | song_album     | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the song album                                        | string                      | * see configuration.yaml ex.                                                  |
 | song_volume    | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the player volume                                          | int (0 to 100)       | * see configuration.yaml ex.                                                 |
 | album_art      | string                                                                    | optional | Topic to listen to for the song album art (Must be a base64 encoded string)       | string (base64 encoded url) | ```"musicbee/albumart"```                                               |
-| player_status  | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the player status                         | string                      | * see configuration.yaml ex.                                          |
+| player_status  | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the player status. Supports "idle", "playing", "idle", "off"                         | string                      | * see configuration.yaml ex.                                          |
 | vol_down*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_down command                           | N/A                         | * see configuration.yaml ex.                                                |
 | vol_up*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_up command                           | N/A                         | * see configuration.yaml ex.                                                |
 | volume      | [service call](https://www.home-assistant.io/docs/scripts/service-calls/)                                                                    | optional | MQTT service to call for the media_player.volume_set command                                    | string                      | * see configuration.yaml                                                |
@@ -92,6 +92,7 @@ This is what my player outputs and what I see when I use MQTT Explorer
 ```
 musicbee
 	playing = true
+	player_status = "paused"
 	songtitle = Repeat After Me (Interlude)
 	artist = The Weeknd
 	volume = 86
