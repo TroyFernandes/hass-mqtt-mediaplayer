@@ -1,6 +1,7 @@
 {
     "domain": "mqtt-mediaplayer",
     "name": "MQTT Media Player",
+    "version": "1.0",
     "documentation": "https://github.com/TroyFernandes/hass-mqtt-mediaplayer",
     "after_dependencies": [
         "mqtt"
