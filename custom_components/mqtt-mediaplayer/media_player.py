@@ -210,7 +210,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def albumart_listener(self, msg):
         """Listen for the Album Art change"""
-        self._album_art  = base64.b64decode(msg.payload.replace("\n",""))
+        self._album_art = base64.b64decode(msg.payload.replace("\n",""))
 
     async def state_listener(self, event, updates):
         """Listen for Player State changes"""
@@ -230,6 +230,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             elif self._mqtt_player_state == 'idle':
                 self._state = STATE_IDLE
             elif self._mqtt_player_state == 'off':
+                self._state = STATE_OFF
+            else:
                 self._state = STATE_OFF
 
     @property
@@ -343,4 +345,3 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Send the previous track command."""
         if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
-
