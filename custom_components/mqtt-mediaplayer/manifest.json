@@ -1,11 +1,12 @@
 {
     "domain": "mqtt-mediaplayer",
     "name": "MQTT Media Player",
-    "documentation": "https://github.com/TroyFernandes/hass-mqtt-mediaplayer",
+    "documentation": "https://github.com/bkbilly/hass-mqtt-mediaplayer",
+    "issue_tracker": "https://github.com/bkbilly/hass-mqtt-mediaplayer/issues",
     "after_dependencies": [
         "mqtt"
     ],
     "requirements": [],
-    "codeowners": [],
-    "version": "1.0.0"
+    "codeowners": ["@bkbilly"],
+    "version": "0.0.0"
 }
