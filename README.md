@@ -92,16 +92,14 @@ media_player:
  
 
 ## Example MQTT Broker
-
-This is what my player outputs and what I see when I use MQTT Explorer
-
+A sensor `sensor.media_info` must be created from the topic `lnxlink/desktop-linux/monitor/stats/media/info` with the following attributes:
 ```
-musicbee
-	playing = true
-	songtitle = Repeat After Me (Interlude)
-	artist = The Weeknd
-	volume = 86
-	album = After Hours
-	command = {"command": "next"}
-	albumart = /9j/4AAQSkZJRgABAQEASABI ...
+{
+	"title": "Kickapoo",
+	"artist": "Tenacious D",
+	"album": "",
+	"status": "playing",
+	"volume": 80,
+	"playing": true
+}
 ```
