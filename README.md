@@ -27,40 +27,39 @@ Easiest install is via [HACS](https://hacs.xyz/):
 ```yaml
 media_player:  
   - platform: mqtt-mediaplayer
-    name: "Musicbee"
+    name: "Desktop Linux"
+    status_keyword: "true"
     topic:
-      song_title: "{{ states('sensor.musicbee_nowplaying_songtitle') }}"
-      song_artist: "{{ states('sensor.musicbee_nowplaying_artist') }}"
-      song_album: "{{ states('sensor.musicbee_nowplaying_album') }}"
-      song_volume: "{{ states('sensor.musicbee_nowplaying_playervolume') }}"
-      player_status: "{{ states('sensor.musicbee_playingstatus') }}"
-      album_art: "musicbee/albumart"
+      song_title: "{{ state_attr('sensor.media_info', 'title') }}"
+      song_artist: "{{ state_attr('sensor.media_info', 'artist') }}"
+      song_album: "{{ state_attr('sensor.media_info', 'album') }}"
+      song_volume: "{{ state_attr('sensor.media_info', 'volume') }}"
+      player_status: "{{ state_attr('sensor.media_info', 'status') }}"
       volume:
         service: mqtt.publish
         data:
-          topic: "musicbee/command"
-          payload: "{\"command\":\"volume_set\", \"args\":{\"volume\":\"{{volume}}\"}}"
-    status_keyword: "true"
+          topic: "lnxlink/desktop-linux/commands/media/volume_set"
+          payload: "{{volume}}"
     next:
       service: mqtt.publish
       data:
-        topic: "musicbee/command"
-        payload: "{\"command\": \"next\"}"
+        topic: "lnxlink/desktop-linux/commands/media/next"
+        payload: "ON"
     previous:
       service: mqtt.publish
       data:
-        topic: "musicbee/command"
-        payload: "{\"command\": \"previous\"}"
+        topic: "lnxlink/desktop-linux/commands/media/previous"
+        payload: "ON"
     play:
       service: mqtt.publish
       data:
-        topic: "musicbee/command"
-        payload: "{\"command\": \"play\"}"
+        topic: "lnxlink/desktop-linux/commands/media/playpause"
+        payload: "ON"
     pause:
       service: mqtt.publish
       data:
-        topic: "musicbee/command"
-        payload: "{\"command\": \"pause\"}"
+        topic: "lnxlink/desktop-linux/commands/media/playpause"
+        payload: "ON"
 
 ```
 
