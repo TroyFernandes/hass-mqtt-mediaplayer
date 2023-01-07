@@ -14,6 +14,7 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 * media_pause
 * media_next_track
 * media_previous_track
+* play_media
 
 
 ## Installation
@@ -60,6 +61,11 @@ media_player:
       data:
         topic: "lnxlink/desktop-linux/commands/media/playpause"
         payload: "ON"
+    play_media:
+      service: mqtt.publish
+      data:
+        topic: "lnxlink/desktop-linux/commands/media/playmedia"
+        payload: "{{media}}"
 
 ```
 
@@ -77,6 +83,7 @@ media_player:
 | vol_down*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_down command                           | N/A                         | * see configuration.yaml ex.                                                |
 | vol_up*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_up command                           | N/A                         | * see configuration.yaml ex.                                                |
 | volume      | [service call](https://www.home-assistant.io/docs/scripts/service-calls/)                                                                    | optional | MQTT service to call for the media_player.volume_set command                                    | string                      | * see configuration.yaml                                                |
+| play_media  | [service call](https://www.home-assistant.io/docs/scripts/service-calls/)                                                                    | optional | MQTT service to call for the media_player.play_media command                                    | string                      | * see configuration.yaml                                                |
 | status_keyword* | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                                                            |
 | next           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "next" button is pressed                            | N/A                         | * see configuration.yaml ex.                                                |
 | previous       | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "previous" button is pressed                        | N/A                         | * see configuration.yaml ex.                                                |
@@ -86,6 +93,7 @@ media_player:
 *NOTES:
 
  * volume: put your custom payload here and replace where your value would be with ``"{{volume}}"`` (see config ex.)
+ * play_media: put your custom payload here and replace where your value would be with ``"{{media}}"`` (see config ex.)
  * status_keyword: This is the keyword your player publishes when it is PLAYING. You only need to mention the keyword for playing. For example, my player indicates it is playing by publishing ```playing = true``` to my broker. Therefore I enter ```"true"``` in my configuration.yaml
  * vol_up/vol_down: Setting this disables the volume_set service. Use vol_up/vol_down if your media player doesn't publish a volume level (i.e if your media player only responds to simple "volumeup"/"volumedown" commands. **If you use the "volume" topic you DONT need to use vol_up/vol_down. Same for the reverse**
  

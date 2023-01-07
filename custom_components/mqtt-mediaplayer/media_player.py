@@ -1,5 +1,6 @@
 """ mqtt-mediaplayer """
 import logging
+import json
 import homeassistant.loader as loader
 import hashlib
 import voluptuous as vol
@@ -7,7 +8,12 @@ import base64
 from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
-from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity
+from homeassistant.components import media_source
+from homeassistant.components.media_player import (
+    PLATFORM_SCHEMA,
+    MediaPlayerEntity,
+    async_process_play_media_url
+)
 from homeassistant.components.media_player.const import (
     MEDIA_TYPE_MUSIC,
     SUPPORT_NEXT_TRACK,
@@ -16,6 +22,7 @@ from homeassistant.components.media_player.const import (
     SUPPORT_PREVIOUS_TRACK,
     SUPPORT_VOLUME_SET,
     SUPPORT_VOLUME_STEP,
+    SUPPORT_PLAY_MEDIA,
 )
 from homeassistant.const import (
     CONF_NAME,
@@ -44,6 +51,7 @@ PLAYERSTATUS_T = "player_status"
 NEXT_ACTION = "next"
 PREVIOUS_ACTION = "previous"
 PLAY_ACTION = "play"
+PLAY_MEDIA_ACTION = "play_media"
 PAUSE_ACTION = "pause"
 VOL_DOWN_ACTION = "vol_down"
 VOL_UP_ACTION = "vol_up"
@@ -57,6 +65,7 @@ SUPPORT_MQTTMEDIAPLAYER = (
     | SUPPORT_VOLUME_SET
     | SUPPORT_NEXT_TRACK
     | SUPPORT_PLAY
+    | SUPPORT_PLAY_MEDIA
 )
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -75,6 +84,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(NEXT_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAY_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(PLAY_MEDIA_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PAUSE_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_DOWN_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_UP_ACTION): cv.SCRIPT_SCHEMA,
@@ -92,6 +102,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     next_action = config.get(NEXT_ACTION)
     previous_action = config.get(PREVIOUS_ACTION)
     play_action = config.get(PLAY_ACTION)
+    play_media_action = config.get(PLAY_MEDIA_ACTION)
     pause_action = config.get(PAUSE_ACTION) 
     vol_down_action = config.get(VOL_DOWN_ACTION)
     vol_up_action = config.get(VOL_UP_ACTION)
@@ -100,7 +111,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
 
     add_entities([MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, 
+        entity_name, next_action, previous_action, play_action, play_media_action, pause_action, 
         vol_down_action, vol_up_action, player_status_keyword, 
         topics, mqtt, hass
         )], )
@@ -112,7 +123,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     """MQTTMediaPlayer"""
 
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, 
+    def __init__(self, name, next_action, previous_action, play_action, play_media_action, pause_action, 
     vol_down_action, vol_up_action, player_status_keyword, 
     topics, mqtt, hass):
         """Initialize"""
@@ -129,6 +140,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._next_script = None
         self._previous_script = None
         self._play_script = None
+        self._play_media_script = None
         self._pause_script = None
         self._vol_down_action = None
         self._vol_up_action = None
@@ -141,6 +153,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._previous_script = Script(hass, previous_action, self._name, self._domain)
         if(play_action):
             self._play_script = Script(hass, play_action, self._name, self._domain)
+        if(play_media_action):
+            self._play_media_script = Script(hass, play_media_action, self._name, self._domain)
         if(pause_action):
             self._pause_script = Script(hass, pause_action, self._name, self._domain)
         if(vol_down_action):
@@ -345,3 +359,17 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Send the previous track command."""
         if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
+
+    async def async_play_media(self, media_type, media_id, **kwargs):
+        """Send the play_media."""
+        if(self._play_media_script):
+            if media_source.is_media_source_id(media_id):
+                sourced_media = await media_source.async_resolve_media(self.hass, media_id)
+                media_type = sourced_media.mime_type
+                media_id = async_process_play_media_url(self.hass, sourced_media.url)
+            media = {
+                "media_type": media_type,
+                "media_id": media_id,
+            }
+            await self._play_media_script.async_run({"media": json.dumps(media)}, context=self._context)
+
