@@ -64,7 +64,7 @@ media_player:
     play_media:
       service: mqtt.publish
       data:
-        topic: "lnxlink/desktop-linux/commands/media/playmedia"
+        topic: "lnxlink/desktop-linux/commands/media/play_media"
         payload: "{{media}}"
 
 ```
