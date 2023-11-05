@@ -43,6 +43,7 @@ TOPICS = "topic"
 SONGTITLE_T = "song_title"
 SONGARTIST_T = "song_artist"
 SONGALBUM_T = "song_album"
+TRACKDURATION_T = "track_duration"
 TRACKPOSITION_T = "track_position"
 SONGVOL_T = "song_volume"
 ALBUMART_T = "album_art"
@@ -78,6 +79,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(SONGTITLE_T): cv.template,
                 vol.Optional(SONGARTIST_T): cv.template,
                 vol.Optional(SONGALBUM_T): cv.template,
+                vol.Optional(TRACKDURATION_T): cv.template,
                 vol.Optional(TRACKPOSITION_T): cv.template,
                 vol.Optional(SONGVOL_T): cv.template,
                 vol.Optional(ALBUMART_T): cv.string,
@@ -137,6 +139,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._track_name = ""
         self._track_artist = ""
         self._track_album_name = ""
+        self._track_duration = None
         self._track_position = None
         self._mqtt_player_state = None
         self._state = None
@@ -184,6 +187,10 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
                     self.async_on_remove(result.async_remove)
 
+                if key == "track_duration":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.duration_listener)
+                    self.async_on_remove(result.async_remove)
+
                 if key == "track_position":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.position_listener)
                     self.async_on_remove(result.async_remove)
@@ -221,6 +228,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         result = updates.pop().result
         self._track_album_name = result
 
+    async def duration_listener(self, event, updates):
+        """Listen for the Duration change"""
+        result = updates.pop().result
+        self._track_duration = result
+
     async def position_listener(self, event, updates):
         """Listen for the Position change"""
         result = updates.pop().result
@@ -250,6 +262,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def update(self):
         """ Update the States"""
         if self._player_status_keyword:
+            self._attr_media_position_updated_at = utcnow()
             if self._mqtt_player_state == 'playing':
                 self._state = STATE_PLAYING
             elif self._mqtt_player_state == 'paused':
@@ -315,15 +328,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     @property
     def media_position(self):
         """Position of player in percentage."""
-        self._attr_media_position_updated_at = utcnow()
         return self._track_position
 
     @property
     def media_duration(self):
         """Duration of current playing media in percentage."""
-        if self._track_position is None:
-            return None
-        return 100
+        return self._track_duration
 
 
     async def async_get_media_image(self):
