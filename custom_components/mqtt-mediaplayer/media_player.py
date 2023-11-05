@@ -9,6 +9,7 @@ from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
 from homeassistant.components import media_source
+from homeassistant.util.dt import utcnow
 from homeassistant.components.media_player import (
     PLATFORM_SCHEMA,
     MediaPlayerEntity,
@@ -42,6 +43,7 @@ TOPICS = "topic"
 SONGTITLE_T = "song_title"
 SONGARTIST_T = "song_artist"
 SONGALBUM_T = "song_album"
+TRACKPOSITION_T = "track_position"
 SONGVOL_T = "song_volume"
 ALBUMART_T = "album_art"
 PLAYERSTATUS_T = "player_status"
@@ -76,6 +78,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(SONGTITLE_T): cv.template,
                 vol.Optional(SONGARTIST_T): cv.template,
                 vol.Optional(SONGALBUM_T): cv.template,
+                vol.Optional(TRACKPOSITION_T): cv.template,
                 vol.Optional(SONGVOL_T): cv.template,
                 vol.Optional(ALBUMART_T): cv.string,
                 vol.Optional(PLAYERSTATUS_T): cv.template,
@@ -134,6 +137,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._track_name = ""
         self._track_artist = ""
         self._track_album_name = ""
+        self._track_position = None
         self._mqtt_player_state = None
         self._state = None
         self._album_art = None
@@ -180,6 +184,10 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
                     self.async_on_remove(result.async_remove)
 
+                if key == "track_position":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.position_listener)
+                    self.async_on_remove(result.async_remove)
+
                 if key == "song_volume":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
                     self.async_on_remove(result.async_remove)
@@ -212,6 +220,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for the Album Name change"""
         result = updates.pop().result
         self._track_album_name = result
+
+    async def position_listener(self, event, updates):
+        """Listen for the Position change"""
+        result = updates.pop().result
+        self._track_position = result
 
     async def volume_listener(self, event, updates):
         """Listen for Player Volume changes"""
@@ -298,6 +311,20 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if self._album_art:
             return hashlib.md5(self._album_art).hexdigest()[:5]       
         return None
+
+    @property
+    def media_position(self):
+        """Position of player in percentage."""
+        self._attr_media_position_updated_at = utcnow()
+        return self._track_position
+
+    @property
+    def media_duration(self):
+        """Duration of current playing media in percentage."""
+        if self._track_position is None:
+            return None
+        return 100
+
 
     async def async_get_media_image(self):
         """Fetch media image of current playing image."""
