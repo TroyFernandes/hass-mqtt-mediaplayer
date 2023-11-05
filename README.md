@@ -31,11 +31,14 @@ media_player:
     name: "Desktop Linux"
     status_keyword: "true"
     topic:
-      song_title: "{{ state_attr('sensor.media_info', 'title') }}"
-      song_artist: "{{ state_attr('sensor.media_info', 'artist') }}"
-      song_album: "{{ state_attr('sensor.media_info', 'album') }}"
-      song_volume: "{{ state_attr('sensor.media_info', 'volume') }}"
-      player_status: "{{ state_attr('sensor.media_info', 'status') }}"
+      song_title: "{{ state_attr('sensor.desktop_linux_media_info', 'title') }}"
+      song_artist: "{{ state_attr('sensor.desktop_linux_media_info', 'artist') }}"
+      song_album: "{{ state_attr('sensor.desktop_linux_media_info', 'album') }}"
+      song_volume: "{{ state_attr('sensor.desktop_linux_media_info', 'volume') }}"
+      player_status: "{{ state_attr('sensor.desktop_linux_media_info', 'status') }}"
+      track_duration: "{{ state_attr('sensor.desktop_linux_media_info', 'duration') }}"
+      track_position: "{{ state_attr('sensor.desktop_linux_media_info', 'position') }}"
+      album_art: "lnxlink/desktop-linux/monitor_controls/media_info/thumbnail"
       volume:
         service: mqtt.publish
         data:
@@ -71,24 +74,26 @@ media_player:
 
 ## Options
 
-| Variables      | Type                                                                      | Default  | Description                                                                       | Expected Payload            | Example                                                                 |
-|----------------|---------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------|-----------------------------|-------------------------------------------------------------------------|
-| name           | string                                                                    | required | Name for the entity                                                               | string                      | ```"Musicbee"```                                                        |
-| song_title     | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the song title                                             | string                      | * see configuration.yaml ex.                                              |
-| song_artist    | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the song artist                                            | string                      | * see configuration.yaml ex.                                                 |
-| song_album     | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the song album                                        | string                      | * see configuration.yaml ex.                                                  |
-| song_volume    | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the player volume                                          | int (0 to 100)       | * see configuration.yaml ex.                                                 |
-| album_art      | string                                                                    | optional | Topic to listen to for the song album art (Must be a base64 encoded string)       | string (base64 encoded url) | ```"musicbee/albumart"```                                               |
-| player_status  | [template](https://www.home-assistant.io/integrations/template/)                                                                    | optional | Value for the player status                         | string                      | * see configuration.yaml ex.                                          |
-| vol_down*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_down command                           | N/A                         | * see configuration.yaml ex.                                                |
-| vol_up*          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_up command                           | N/A                         | * see configuration.yaml ex.                                                |
-| volume      | [service call](https://www.home-assistant.io/docs/scripts/service-calls/)                                                                    | optional | MQTT service to call for the media_player.volume_set command                                    | string                      | * see configuration.yaml                                                |
-| play_media  | [service call](https://www.home-assistant.io/docs/scripts/service-calls/)                                                                    | optional | MQTT service to call for the media_player.play_media command                                    | string                      | * see configuration.yaml                                                |
-| status_keyword* | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                                                            |
-| next           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "next" button is pressed                            | N/A                         | * see configuration.yaml ex.                                                |
-| previous       | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "previous" button is pressed                        | N/A                         | * see configuration.yaml ex.                                                |
-| play           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "play" button is pressed                            | N/A                         | * see configuration.yaml ex.                                                |
-| pause          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "pause" button is pressed                           | N/A                         | * see configuration.yaml ex.                                                |
+| Variables       | Type                                                                      | Default  | Description                                                                       | Expected Payload            | Example                                |
+|-----------------|---------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------|-----------------------------|----------------------------------------|
+| name            | string                                                                    | required | Name for the entity                                                               | string                      | ```"Musicbee"```                       |
+| song_title      | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song title                                                          | string                      | * see configuration.yaml ex.           |
+| song_artist     | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song artist                                                         | string                      | * see configuration.yaml ex.           |
+| song_album      | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song album                                                          | string                      | * see configuration.yaml ex.           |
+| song_volume     | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the player volume                                                       | int (0 to 100)              | * see configuration.yaml ex.           |
+| album_art       | string                                                                    | optional | Topic to listen to for the song album art (Must be a base64 encoded string)       | string (base64 encoded url) | ```"musicbee/albumart"```              |
+| duration        | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the track duration                                                      | integer                     | * see configuration.yaml ex.           |
+| position        | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the track position                                                      | integer                     | * see configuration.yaml ex.           |
+| player_status   | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the player status                                                       | string                      | * see configuration.yaml ex.           |
+| vol_down*       | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_down command                     | N/A                         | * see configuration.yaml ex.           |
+| vol_up*         | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_up command                       | N/A                         | * see configuration.yaml ex.           |
+| volume          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_set command                      | string                      | * see configuration.yaml               |
+| play_media      | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.play_media command                      | string                      | * see configuration.yaml               |
+| status_keyword* | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                           |
+| next            | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "next" button is pressed                            | N/A                         | * see configuration.yaml ex.           |
+| previous        | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "previous" button is pressed                        | N/A                         | * see configuration.yaml ex.           |
+| play            | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "play" button is pressed                            | N/A                         | * see configuration.yaml ex.           |
+| pause           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "pause" button is pressed                           | N/A                         | * see configuration.yaml ex.           |
 
 *NOTES:
 
@@ -101,13 +106,15 @@ media_player:
 
 ## Example MQTT Broker
 A sensor `sensor.media_info` must be created from the topic `lnxlink/desktop-linux/monitor/stats/media/info` with the following attributes:
-```
+```json
 {
-	"title": "Kickapoo",
-	"artist": "Tenacious D",
-	"album": "",
-	"status": "playing",
-	"volume": 80,
-	"playing": true
+  "title": "Kickapoo",
+  "artist": "Tenacious D",
+  "album": "",
+  "status": "playing",
+  "volume": 80,
+  "playing": true,
+  "position": 172,
+  "duration": 241
 }
 ```
