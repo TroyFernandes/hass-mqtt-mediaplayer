@@ -152,6 +152,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._vol_down_action = None
         self._vol_up_action = None
         self._vol_script = None
+        
+        self._attr_unique_id = f"mqtt-mediaplayer {name}"
 
 
         if(next_action):
