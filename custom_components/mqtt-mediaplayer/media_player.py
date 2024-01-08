@@ -7,19 +7,11 @@ import base64
 from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
-from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity
+from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity, MediaPlayerEntityFeature
 from homeassistant.components.media_player.const import (
-    MEDIA_TYPE_MUSIC,
-    SUPPORT_NEXT_TRACK,
-    SUPPORT_PAUSE,
-    SUPPORT_PLAY,
-    SUPPORT_PREVIOUS_TRACK,
-    SUPPORT_VOLUME_SET,
-    SUPPORT_VOLUME_STEP,
-    SUPPORT_TURN_OFF,
-    SUPPORT_TURN_ON,
-    SUPPORT_SELECT_SOURCE
+    MEDIA_TYPE_MUSIC
 )
+
 from homeassistant.const import (
     CONF_NAME,
     STATE_OFF,
@@ -151,30 +143,30 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
         if(next_action):
             self._next_script = Script(hass, next_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_NEXT_TRACK
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.NEXT_TRACK
         if(previous_action):
             self._previous_script = Script(hass, previous_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_PREVIOUS_TRACK
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.PREVIOUS_TRACK
         if(play_action):
             self._play_script = Script(hass, play_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_PLAY
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.PLAY
         if(pause_action):
             self._pause_script = Script(hass, pause_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_PAUSE
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.PAUSE
         if(vol_down_action):
             self._vol_down_action = Script(hass, vol_down_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_VOLUME_STEP
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.VOLUME_STEP
         if(vol_up_action):
             self._vol_up_action = Script(hass, vol_up_action, self._name, self._domain)        
         if(select_source_action):
             self._select_source_script = Script(hass, select_source_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_SELECT_SOURCE
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.SELECT_SOURCE
         if(turn_off_action):
             self._turn_off_script = Script(hass, turn_off_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_TURN_OFF
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.TURN_OFF
         if(turn_on_action):
             self._turn_on_script = Script(hass, turn_on_action, self._name, self._domain)
-            self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_TURN_ON
+            self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.TURN_ON
 
         self._player_status_keyword = player_status_keyword
 
@@ -206,7 +198,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
                 if key == "volume":
                     self._vol_script = Script(hass, value, self._name, self._domain)
-                    self.SUPPORT_MQTTMEDIAPLAYER |= SUPPORT_VOLUME_SET
+                    self.SUPPORT_MQTTMEDIAPLAYER |= MediaPlayerEntityFeature.VOLUME_SET
 
                 if key == "source":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.source_listener)
