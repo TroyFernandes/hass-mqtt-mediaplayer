@@ -76,9 +76,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the MQTT Media Player platform."""
-    mqtt = hass.components.mqtt
 
     topics = config.get(TOPICS)    
     entity_name = config.get(CONF_NAME)
@@ -94,20 +93,26 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     select_source_action = config.get(SELECT_SOURCE_ACTION)
     player_status_keyword = config.get(PLAYERSTATUS_KEYWORD)
 
-    add_entities([MQTTMediaPlayer(
+    entity = MQTTMediaPlayer(
         entity_name, next_action, previous_action, play_action, pause_action, 
         vol_down_action, vol_up_action, player_status_keyword, 
-        topics, mqtt, hass,
         turn_off_action, turn_on_action, select_source_action,
-        )], )
+        topics, hass
+    )
+
+    async_add_entities([entity])
+
+    await entity.async_setup()
+
 
 class MQTTMediaPlayer(MediaPlayerEntity):
     """MQTTMediaPlayer"""
 
     def __init__(self, name, next_action, previous_action, play_action, pause_action, 
-    vol_down_action, vol_up_action, player_status_keyword, 
-    topics, mqtt, hass,
-    turn_off_action, turn_on_action, select_source_action):
+                 vol_down_action, vol_up_action, player_status_keyword, 
+                 turn_off_action, turn_on_action, select_source_action,
+                 topics, hass):
+        
         """Initialize"""
         self.hass = hass
         self._domain = __name__.split(".")[-2]
@@ -159,39 +164,53 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if turn_on_action:
             self._turn_on_script = Script(hass, turn_on_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.TURN_ON
-
+        
         self._player_status_keyword = player_status_keyword
+        self._topics = topics
 
-        if topics is not None:
-            for key, value in topics.items():
+    async def async_setup(self):
+        """Set up the MQTT subscriptions."""
+        if self._topics is not None:
+            for key, value in self._topics.items():
                 if key == "song_title":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.tracktitle_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "song_artist":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.artist_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "song_album":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "song_volume":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.volume_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "album_art":
-                    mqtt.subscribe(value, self.albumart_listener)
+                    await mqtt.async_subscribe(self.hass, value, self.albumart_listener)
+
                 if key == "player_status":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "volume":
-                    self._vol_script = Script(hass, value, self._name, self._domain)
+                    self._vol_script = Script(self.hass, value, self._name, self._domain)
                     self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_SET
+
                 if key == "source":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.source_listener)
                     self.async_on_remove(result.async_remove)
+
                 if key == "source_list":
                     self._source_list = value
 
+
     @property
     def source_list(self):
+        if self._source_list is None:
+            return []
         return [entry['name'] for entry in self._source_list]
 
     async def tracktitle_listener(self, event, updates):
@@ -321,7 +340,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def async_volume_up(self):
         """Volume up the media player."""
-        if self._vol_up_action:
+        if(self._vol_up_action):
             await self._vol_up_action.async_run(context=self._context)
         else:
             newvolume = min(self._volume + 5, 100)
@@ -330,7 +349,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def async_volume_down(self):
         """Volume down media player."""
-        if self._vol_down_action:
+        if(self._vol_down_action):
             await self._vol_down_action.async_run(context=self._context)
         else:
             newvolume = max(self._volume - 5, 0)
@@ -339,7 +358,9 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume):
         """Set volume level."""
-        if self._vol_script:
+        if(self._vol_down_action or self._vol_down_action):
+            return
+        if(self._vol_script):
             await self._vol_script.async_run({"volume": volume}, context=self._context)
             self._volume = volume
 
@@ -352,39 +373,45 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def async_media_play(self):
         """Send play command."""
-        if self._play_script:
+        if(self._play_script):
             await self._play_script.async_run(context=self._context)
+            self._state = STATE_PLAYING
 
     async def async_media_pause(self):
-        """Send pause command."""
-        if self._pause_script:
+        """Send media pause command to media player."""
+        if(self._pause_script):
             await self._pause_script.async_run(context=self._context)
+            self._state = STATE_PAUSED
 
     async def async_media_next_track(self):
         """Send next track command."""
-        if self._next_script:
+        if(self._next_script):
             await self._next_script.async_run(context=self._context)
 
     async def async_media_previous_track(self):
         """Send the previous track command."""
-        if self._previous_script:
+        if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
 
     async def async_select_source(self, source):
-        """Select input source."""
-        if self._select_source_script:
+        """Send source select command."""
+        if(self._select_source_script):
             for entry in self._source_list:
                 if entry['name'] == source:
-                    await self._select_source_script.async_run({"source": entry['id']}, context=self._context)
-                    self._source = source
-                    break
+                    id_ = entry['id']
+            await self._select_source_script.async_run({"source": id_}, context=self._context)
+            self._source = source
 
     async def async_turn_off(self):
-        """Turn the media player off."""
-        if self._turn_off_script:
+        """Send turn off command."""
+        if(self._turn_off_script):
             await self._turn_off_script.async_run(context=self._context)
 
     async def async_turn_on(self):
-        """Turn the media player on."""
-        if self._turn_on_script:
+        """Send turn on command."""
+        if(self._turn_on_script):
             await self._turn_on_script.async_run(context=self._context)
+
+    @property
+    def source(self):
+        return self._source
