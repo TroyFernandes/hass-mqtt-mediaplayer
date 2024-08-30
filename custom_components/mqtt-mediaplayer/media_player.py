@@ -137,10 +137,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._source = None
         self._source_list = None
 
-        self.attr_supported_features = SUPPORTED_FEAT
-
-
-
         if next_action:
             self._next_script = Script(hass, next_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.NEXT_TRACK
@@ -228,6 +224,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for the Artist Name change"""
         result = updates.pop().result
         self._track_artist = result
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
 
     async def source_list_listener(self, event, updates):
         """Listen for the Source change"""
@@ -268,8 +266,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     async def state_listener(self, event, updates):
         """Listen for Player State changes"""
         result = updates.pop().result
-        self._mqtt_player_state  = str(result)
-        self._state  = str(result)
+        self._mqtt_player_state = str(result)
+        self._state = str(result)
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
