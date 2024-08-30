@@ -1,11 +1,12 @@
 {
     "domain": "mqtt-mediaplayer",
     "name": "MQTT Media Player",
-    "documentation": "https://github.com/TroyFernandes/hass-mqtt-mediaplayer",
     "after_dependencies": [
         "mqtt"
     ],
-    "requirements": [],
     "codeowners": [],
+    "documentation": "https://github.com/TroyFernandes/hass-mqtt-mediaplayer",
+    "iot_class": "local_push",
+    "requirements": [],
     "version": "1.0.0"
 }
