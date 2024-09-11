@@ -1,21 +1,6 @@
 # MQTT Media Player
 
-Allows you to use MQTT topics to fill out the information needed for the Home Assistant Media Player Entity
-
-## Supported Features
-
-[Media Player Entity](https://www.home-assistant.io/integrations/media_player/)
-
-* volume_up
-* volume_down
-* volume_set
-* media_play_pause
-* media_play
-* media_pause
-* media_next_track
-* media_previous_track
-* play_media
-
+Easiest way to add a custom MQTT Media Player
 
 ## Installation
 Easiest install is via [HACS](https://hacs.xyz/):
@@ -23,6 +8,7 @@ Easiest install is via [HACS](https://hacs.xyz/):
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=bkbilly&repository=hass-mqtt-mediaplayer&category=integration)
 
 Add the name of your media player, eg: `myplayer`.
+
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=mqtt_media_player)
 
 
