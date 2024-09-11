@@ -1,8 +1,8 @@
-# hass-mqtt-mediaplayer
+# MQTT Media Player
 
 Allows you to use MQTT topics to fill out the information needed for the Home Assistant Media Player Entity
 
-## Supported Services
+## Supported Features
 
 [Media Player Entity](https://www.home-assistant.io/integrations/media_player/)
 
@@ -22,99 +22,67 @@ Easiest install is via [HACS](https://hacs.xyz/):
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=bkbilly&repository=hass-mqtt-mediaplayer&category=integration)
 
+Add the name of your media player, eg: `myplayer`.
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=mqtt_media_player)
 
-## Example configuration.yaml
-
-```yaml
-media_player:  
-  - platform: mqtt-mediaplayer
-    name: "Desktop Linux"
-    status_keyword: "true"
-    topic:
-      song_title: "{{ state_attr('sensor.desktop_linux_media_info', 'title') }}"
-      song_artist: "{{ state_attr('sensor.desktop_linux_media_info', 'artist') }}"
-      song_album: "{{ state_attr('sensor.desktop_linux_media_info', 'album') }}"
-      song_volume: "{{ state_attr('sensor.desktop_linux_media_info', 'volume') }}"
-      player_status: "{{ state_attr('sensor.desktop_linux_media_info', 'status') }}"
-      track_duration: "{{ state_attr('sensor.desktop_linux_media_info', 'duration') }}"
-      track_position: "{{ state_attr('sensor.desktop_linux_media_info', 'position') }}"
-      album_art: "lnxlink/desktop-linux/monitor_controls/media_info/thumbnail"
-      volume:
-        service: mqtt.publish
-        data:
-          topic: "lnxlink/desktop-linux/commands/media/volume_set"
-          payload: "{{volume}}"
-    next:
-      service: mqtt.publish
-      data:
-        topic: "lnxlink/desktop-linux/commands/media/next"
-        payload: "ON"
-    previous:
-      service: mqtt.publish
-      data:
-        topic: "lnxlink/desktop-linux/commands/media/previous"
-        payload: "ON"
-    play:
-      service: mqtt.publish
-      data:
-        topic: "lnxlink/desktop-linux/commands/media/playpause"
-        payload: "ON"
-    pause:
-      service: mqtt.publish
-      data:
-        topic: "lnxlink/desktop-linux/commands/media/playpause"
-        payload: "ON"
-    play_media:
-      service: mqtt.publish
-      data:
-        topic: "lnxlink/desktop-linux/commands/media/play_media"
-        payload: "{{media}}"
-
-```
 
 ## Options
 
-| Variables       | Type                                                                      | Default  | Description                                                                       | Expected Payload            | Example                                |
-|-----------------|---------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------|-----------------------------|----------------------------------------|
-| name            | string                                                                    | required | Name for the entity                                                               | string                      | ```"Musicbee"```                       |
-| song_title      | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song title                                                          | string                      | * see configuration.yaml ex.           |
-| song_artist     | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song artist                                                         | string                      | * see configuration.yaml ex.           |
-| song_album      | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the song album                                                          | string                      | * see configuration.yaml ex.           |
-| song_volume     | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the player volume                                                       | int (0 to 100)              | * see configuration.yaml ex.           |
-| album_art       | string                                                                    | optional | Topic to listen to for the song album art (Must be a base64 encoded string)       | string (base64 encoded url) | ```"musicbee/albumart"```              |
-| duration        | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the track duration                                                      | integer                     | * see configuration.yaml ex.           |
-| position        | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the track position                                                      | integer                     | * see configuration.yaml ex.           |
-| player_status   | [template](https://www.home-assistant.io/integrations/template/)          | optional | Value for the player status                                                       | string                      | * see configuration.yaml ex.           |
-| vol_down*       | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_down command                     | N/A                         | * see configuration.yaml ex.           |
-| vol_up*         | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_up command                       | N/A                         | * see configuration.yaml ex.           |
-| volume          | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.volume_set command                      | string                      | * see configuration.yaml               |
-| play_media      | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call for the media_player.play_media command                      | string                      | * see configuration.yaml               |
-| status_keyword* | string                                                                    | optional | Keyword used to indicate your MQTT enabled player is currently playing a song     | string                      | ```"true"```                           |
-| next            | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "next" button is pressed                            | N/A                         | * see configuration.yaml ex.           |
-| previous        | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "previous" button is pressed                        | N/A                         | * see configuration.yaml ex.           |
-| play            | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "play" button is pressed                            | N/A                         | * see configuration.yaml ex.           |
-| pause           | [service call](https://www.home-assistant.io/docs/scripts/service-calls/) | optional | MQTT service to call when the "pause" button is pressed                           | N/A                         | * see configuration.yaml ex.           |
+| Variables                | Description                                              | Topic               | Payload   |
+|--------------------------|----------------------------------------------------------|---------------------|-----------|
+| availability             | Availability                                             |                     |           |
+|   topic                  | Availability topic                                       | myplayer/available  |           |
+|   payload_available      | Availability payload when available                      |                     | online    |
+|   payload_unavailable    | Availability payload when unavailable                    |                     | offline   |
+| name                     | The name of the Media Player                             |                     | MyPlayer  |
+| state_state_topic        | Media Player state (off, idle, paused, stopped, playing) | myplayer/state      |           |
+| state_title_topic        | Track Title                                              | myplayer/title      |           |
+| state_artist_topic       | Track Artist                                             | myplayer/artist     |           |
+| state_album_topic        | Track Album                                              | myplayer/album      |           |
+| state_duration_topic     | Track Duration (int)                                     | myplayer/duration   |           |
+| state_position_topic     | Track Position (int)                                     | myplayer/position   |           |
+| state_albumart_topic     | Thumbnail (byte)                                         | myplayer/albumart   |           |
+| state_mediatype_topic    | Media Type (music, video)                                | myplayer/mediatype  |           |
+| state_volume_topic       | Current system volume                                    | myplayer/volume     |           |
+| command_volume_topic     | Set System volume                                        | myplayer/volumeset  |           |
+| command_play_topic       | Play media                                               | myplayer/play       | Play      |
+| command_pause_topic      | Pause media                                              | myplayer/pause      | Pause     |
+| *command_playpause_topic | PlayPause media                                          | myplayer/playpause  | PlayPause |
+| command_next_topic       | Go to next track                                         | myplayer/next       | Next      |
+| command_previous_topic   | Go to previous track                                     | myplayer/previous   | Previous  |
+| command_playmedia_topic  | Support TTS, playing media, etc...                       | myplayer/playmedia  |           |
 
-*NOTES:
 
- * volume: put your custom payload here and replace where your value would be with ``"{{volume}}"`` (see config ex.)
- * play_media: put your custom payload here and replace where your value would be with ``"{{media}}"`` (see config ex.)
- * status_keyword: This is the keyword your player publishes when it is PLAYING. You only need to mention the keyword for playing. For example, my player indicates it is playing by publishing ```playing = true``` to my broker. Therefore I enter ```"true"``` in my configuration.yaml
- * vol_up/vol_down: Setting this disables the volume_set service. Use vol_up/vol_down if your media player doesn't publish a volume level (i.e if your media player only responds to simple "volumeup"/"volumedown" commands. **If you use the "volume" topic you DONT need to use vol_up/vol_down. Same for the reverse**
- 
- 
-
-## Example MQTT Broker
-A sensor `sensor.media_info` must be created from the topic `lnxlink/desktop-linux/monitor/stats/media/info` with the following attributes:
+## Example MQTT configuration
+A MQTT configuration should be sent to `homeassistant/media_player/myplayer/config`.
 ```json
 {
-  "title": "Kickapoo",
-  "artist": "Tenacious D",
-  "album": "",
-  "status": "playing",
-  "volume": 80,
-  "playing": true,
-  "position": 172,
-  "duration": 241
+  "availability": {
+    "topic": "myplayer/available",
+    "payload_available": "ON",
+    "payload_not_available": "OFF"
+  },
+  "name": "My Custom Player",
+  "state_state_topic": "myplayer/state",
+  "state_title_topic": "myplayer/title",
+  "state_artist_topic": "myplayer/artist",
+  "state_album_topic": "myplayer/album",
+  "state_duration_topic": "myplayer/duration",
+  "state_position_topic": "myplayer/position",
+  "state_volume_topic": "myplayer/volume",
+  "state_albumart_topic": "myplayer/albumart",
+  "state_mediatype_topic": "myplayer/mediatype",
+  "command_volume_topic": "myplayer/set_volume",
+  "command_play_topic": "myplayer/play",
+  "command_play_payload": "play",
+  "command_pause_topic": "myplayer/pause",
+  "command_pause_payload": "pause",
+  "command_playpause_topic": "myplayer/playpause",
+  "command_playpause_payload": "playpause",
+  "command_next_topic": "myplayer/next",
+  "command_next_payload": "next",
+  "command_previous_topic": "myplayer/previous",
+  "command_previous_payload": "previous",
+  "command_playmedia_topic": "myplayer/playmedia"
 }
 ```

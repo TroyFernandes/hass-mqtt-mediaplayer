@@ -1,1 +1,0 @@
-"""mqtt-mediaplayer custom component"""

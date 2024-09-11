@@ -1,0 +1,10 @@
+{
+  "domain": "mqtt_media_player",
+  "name": "MQTT Media Player",
+  "version": "0",
+  "requirements": [],
+  "config_flow": true,
+  "dependencies": ["mqtt"],
+  "codeowners": ["@bkbilly"]
+}
+
