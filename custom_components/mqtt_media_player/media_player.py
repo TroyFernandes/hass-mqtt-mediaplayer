@@ -6,7 +6,8 @@ from homeassistant.util.dt import utcnow
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
-    MediaPlayerEntityFeature
+    MediaPlayerEntityFeature,
+    async_process_play_media_url
 )
 from homeassistant.components.mqtt import (
     async_subscribe,
