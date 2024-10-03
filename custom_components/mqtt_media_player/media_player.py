@@ -279,4 +279,4 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             "media_type": media_type,
             "media_id": media_id,
         }
-        await async_publish(self._hass, self._cmd_topics["playmedia_topic"], media)
+        await async_publish(self._hass, self._cmd_topics["playmedia_topic"], json.dumps(media))
