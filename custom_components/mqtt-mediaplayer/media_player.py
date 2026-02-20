@@ -331,6 +331,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.year_listener)
                     self.async_on_remove(result.async_remove)
 
+
     @property
     def source_list(self):
         if self._source_list_names:
@@ -354,7 +355,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self.schedule_update_ha_state(True)
 
     async def source_list_listener(self, event, updates):
-        """Listen for the Source change"""
+        """Listen for the Source change (legacy)"""
         result = updates.pop().result
         self._source_list = result
 
@@ -519,8 +520,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                 self._state = STATE_PLAYING
             else:
                 self._state = STATE_PAUSED
-        else:
-            self._state = self._mqtt_player_state
 
     @property
     def should_poll(self):
@@ -540,7 +539,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def volume_level(self):
         """Volume level of the media player (0..1)."""
         return self._volume / 100.0
-    
+
     @property
     def is_volume_muted(self):
         """Boolean if volume is currently muted."""
@@ -565,7 +564,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def media_album_name(self):
         """Album name of current playing media, music track only."""
         return self._track_album_name
-    
+
     @property
     def media_album_artist(self):
         """Album artist of current playing media."""
@@ -593,17 +592,17 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def media_position_updated_at(self):
         """When was the position of the current playing media valid."""
         return self._media_position_updated_at
-    
+
     @property
     def shuffle(self):
         """Boolean if shuffle is enabled."""
         return self._shuffle
-    
+
     @property
     def repeat(self):
         """Return current repeat mode."""
         return self._repeat
-    
+
     @property
     def extra_state_attributes(self):
         """Return extra state attributes."""
@@ -613,7 +612,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if self._track_year:
             attrs["year"] = self._track_year
         return attrs
-    
+
     @property
     def supported_features(self):
         """Flag media player features that are supported."""
@@ -711,12 +710,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             await self._repeat_set_script.async_run({"repeat": mqtt_repeat}, context=self._context)
             self._repeat = repeat
 
-    async def async_mute_volume(self, mute):
-        """Mute the volume."""
-        if(self._mute_script):
-            await self._mute_script.async_run({"mute": mute}, context=self._context)
-            self._muted = mute
-
     async def async_media_seek(self, position):
         """Send seek command."""
         if(self._seek_script):
@@ -724,6 +717,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             import datetime
             self._media_position = int(position)
             self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
+
+    async def async_mute_volume(self, mute):
+        """Mute the volume."""
+        if(self._mute_script):
+            await self._mute_script.async_run({"mute": mute}, context=self._context)
+            self._muted = mute
 
     async def async_select_source(self, source):
         """Send source select command."""
