@@ -189,6 +189,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._mute_script = None
         self._source = None
         self._source_list = None
+        self._source_list_names = None
         self._shuffle = False
         self._repeat = RepeatMode.OFF
         self._muted = False
@@ -282,7 +283,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     self.async_on_remove(result.async_remove)
 
                 if key == "source_list":
-                    self._source_list = value
+                    if isinstance(value, str):
+                        # MQTT topic - subscribe directly
+                        await mqtt.async_subscribe(self.hass, value, self.source_list_mqtt_listener)
+                    elif isinstance(value, list):
+                        self._source_list = value
 
                 if key == "shuffle_mode":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.shuffle_listener)
@@ -325,6 +330,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     @property
     def source_list(self):
+        if self._source_list_names:
+            return self._source_list_names
         if self._source_list is None:
             return []
         return [entry['name'] for entry in self._source_list]
@@ -348,12 +355,28 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         result = updates.pop().result
         self._source_list = result
 
+    async def source_list_mqtt_listener(self, msg):
+        """Listen for source list via direct MQTT subscription"""
+        try:
+            devices = json.loads(msg.payload)
+            if isinstance(devices, list):
+                self._source_list_names = devices
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
     async def source_listener(self, event, updates):
         """Listen for the Source change"""
         result = updates.pop().result
-        for entry in self._source_list:
-            if int(entry['id']) == int(result):
-                self._source = entry['name']
+        if self._source_list:
+            # Static list: map ID to name
+            for entry in self._source_list:
+                if int(entry['id']) == int(result):
+                    self._source = entry['name']
+        else:
+            # Dynamic: use value directly as the source name
+            self._source = str(result)
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
@@ -690,10 +713,16 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     async def async_select_source(self, source):
         """Send source select command."""
         if(self._select_source_script):
-            for entry in self._source_list:
-                if entry['name'] == source:
-                    id_ = entry['id']
-            await self._select_source_script.async_run({"source": id_}, context=self._context)
+            if self._source_list:
+                # Static list: look up ID by name
+                id_ = None
+                for entry in self._source_list:
+                    if entry['name'] == source:
+                        id_ = entry['id']
+                await self._select_source_script.async_run({"source": id_}, context=self._context)
+            else:
+                # Dynamic: pass source name directly
+                await self._select_source_script.async_run({"source": source}, context=self._context)
             self._source = source
 
     async def async_turn_off(self):
