@@ -391,10 +391,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for Player Volume changes"""
         result = updates.pop().result
         _LOGGER.debug("Volume Listener: " + str(result))
-        if isinstance(result, int):
+        try:
             self._volume = int(result)
-            if MQTTMediaPlayer:
-                self.schedule_update_ha_state(True)
+        except (ValueError, TypeError):
+            pass
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
 
     async def albumart_listener(self, msg):
         """Listen for the Album Art change"""
@@ -641,7 +643,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             return
         if(self._vol_script):
             await self._vol_script.async_run({"volume": volume}, context=self._context)
-            self._volume = volume
+            self._volume = int(volume * 100)
 
     async def async_media_play_pause(self):
         """Simulate play pause media player."""
