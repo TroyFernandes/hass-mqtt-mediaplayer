@@ -39,6 +39,11 @@ REPEAT_T = "repeat_mode"
 MUTED_T = "muted"
 MEDIA_DURATION_T = "media_duration"
 MEDIA_POSITION_T = "media_position"
+CONTENT_TYPE_T = "content_type"
+TRACK_NUMBER_T = "track_number"
+GENRE_T = "genre"
+ALBUM_ARTIST_T = "album_artist"
+YEAR_T = "year"
 # END of TOPICS
 
 NEXT_ACTION = "next"
@@ -80,6 +85,11 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(MUTED_T): cv.template,
                 vol.Optional(MEDIA_DURATION_T): cv.template,
                 vol.Optional(MEDIA_POSITION_T): cv.template,
+                vol.Optional(CONTENT_TYPE_T): cv.template,
+                vol.Optional(TRACK_NUMBER_T): cv.template,
+                vol.Optional(GENRE_T): cv.template,
+                vol.Optional(ALBUM_ARTIST_T): cv.template,
+                vol.Optional(YEAR_T): cv.template,
             }),
         vol.Optional(NEXT_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
@@ -151,6 +161,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._track_name = ""
         self._track_artist = ""
         self._track_album_name = ""
+        self._track_album_artist = ""
+        self._track_genre = ""
+        self._track_year = ""
+        self._track_number = ""
+        self._content_type = MediaType.MUSIC
         self._mqtt_player_state = None
         self._state = None
         self._album_art = None
@@ -285,6 +300,25 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.position_listener)
                     self.async_on_remove(result.async_remove)
 
+                if key == "content_type":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.content_type_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "track_number":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.track_number_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "genre":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.genre_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "album_artist":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.album_artist_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "year":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.year_listener)
+
     @property
     def source_list(self):
         if self._source_list is None:
@@ -415,6 +449,37 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
+    async def content_type_listener(self, event, updates):
+        """Listen for content type changes"""
+        result = str(updates.pop().result).lower()
+        self._content_type = MediaType.MUSIC if result == "music" else result
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def track_number_listener(self, event, updates):
+        """Listen for track number changes"""
+        self._track_number = str(updates.pop().result)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def genre_listener(self, event, updates):
+        """Listen for genre changes"""
+        self._track_genre = str(updates.pop().result)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def album_artist_listener(self, event, updates):
+        """Listen for album artist changes"""
+        self._track_album_artist = str(updates.pop().result)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def year_listener(self, event, updates):
+        """Listen for year changes"""
+        self._track_year = str(updates.pop().result)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
     def update(self):
         """ Update the States"""
         if self._player_status_keyword:
@@ -452,7 +517,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     @property
     def media_content_type(self):
         """Content type of current playing media."""
-        return MediaType.MUSIC
+        return self._content_type
 
     @property
     def media_title(self):
@@ -469,6 +534,19 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Album name of current playing media, music track only."""
         return self._track_album_name
     
+    @property
+    def media_album_artist(self):
+        """Album artist of current playing media."""
+        return self._track_album_artist
+
+    @property
+    def media_track(self):
+        """Track number of current playing media."""
+        try:
+            return int(self._track_number) if self._track_number else None
+        except (ValueError, TypeError):
+            return None
+
     @property
     def media_duration(self):
         """Duration of current playing media in seconds."""
