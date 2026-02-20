@@ -7,13 +7,14 @@ import base64
 from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
 from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
-from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity, MediaPlayerEntityFeature, MediaType
+from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity, MediaPlayerEntityFeature, MediaType, RepeatMode
 import homeassistant.components.mqtt as mqtt
 from homeassistant.const import (
     CONF_NAME,
     STATE_OFF,
     STATE_PAUSED,
     STATE_PLAYING,
+    STATE_IDLE
 )
 import homeassistant.helpers.config_validation as cv
 
@@ -31,6 +32,9 @@ ALBUMART_T = "album_art"
 PLAYERSTATUS_T = "player_status"
 CURRENT_SOURCE_T = "source"
 SOURCE_LIST_T = "source_list"
+SHUFFLE_T = "shuffle_mode"
+REPEAT_T = "repeat_mode"
+MUTED_T = "muted"
 
 # END of TOPICS
 
@@ -38,6 +42,7 @@ NEXT_ACTION = "next"
 PREVIOUS_ACTION = "previous"
 PLAY_ACTION = "play"
 PAUSE_ACTION = "pause"
+STOP_ACTION = "stop"
 VOL_DOWN_ACTION = "vol_down"
 VOL_UP_ACTION = "vol_up"
 VOLUME_ACTION = "volume"
@@ -45,7 +50,9 @@ PLAYERSTATUS_KEYWORD = "status_keyword"
 SELECT_SOURCE_ACTION = "select_source"
 TURN_OFF_ACTION = "turn_off"
 TURN_ON_ACTION = "turn_on"
-
+SHUFFLE_SET_ACTION = "shuffle_set"
+REPEAT_SET_ACTION = "repeat_set"
+MUTE_ACTION = "mute"
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_NAME): cv.string,
@@ -61,17 +68,24 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(SOURCE_LIST_T, default=[]): vol.All(
                     cv.ensure_list, [{vol.Required("id"): cv.string,
                                       vol.Required("name"): cv.string}]),
-                vol.Optional(VOLUME_ACTION): cv.SCRIPT_SCHEMA
+                vol.Optional(VOLUME_ACTION): cv.SCRIPT_SCHEMA,
+                vol.Optional(SHUFFLE_T): cv.template,
+                vol.Optional(REPEAT_T): cv.template,
+                vol.Optional(MUTED_T): cv.template,
             }),
         vol.Optional(NEXT_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAY_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PAUSE_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(STOP_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_DOWN_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(VOL_UP_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(TURN_OFF_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(TURN_ON_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(SELECT_SOURCE_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(SHUFFLE_SET_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(REPEAT_SET_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(MUTE_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAYERSTATUS_KEYWORD): cv.string,
     }
 )
@@ -84,19 +98,24 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     next_action = config.get(NEXT_ACTION)
     previous_action = config.get(PREVIOUS_ACTION)
     play_action = config.get(PLAY_ACTION)
-    pause_action = config.get(PAUSE_ACTION) 
+    pause_action = config.get(PAUSE_ACTION)
+    stop_action = config.get(STOP_ACTION) 
     vol_down_action = config.get(VOL_DOWN_ACTION)
     vol_up_action = config.get(VOL_UP_ACTION)
     volume_action = config.get(VOLUME_ACTION)
     turn_off_action = config.get(TURN_OFF_ACTION)
     turn_on_action = config.get(TURN_ON_ACTION)
     select_source_action = config.get(SELECT_SOURCE_ACTION)
+    shuffle_set_action = config.get(SHUFFLE_SET_ACTION)
+    repeat_set_action = config.get(REPEAT_SET_ACTION)
+    mute_action = config.get(MUTE_ACTION)
     player_status_keyword = config.get(PLAYERSTATUS_KEYWORD)
 
     entity = MQTTMediaPlayer(
-        entity_name, next_action, previous_action, play_action, pause_action, 
-        vol_down_action, vol_up_action, player_status_keyword, 
+        entity_name, next_action, previous_action, play_action, pause_action,
+        stop_action, vol_down_action, vol_up_action, player_status_keyword, 
         turn_off_action, turn_on_action, select_source_action,
+        shuffle_set_action, repeat_set_action, mute_action,
         topics, hass
     )
 
@@ -108,9 +127,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class MQTTMediaPlayer(MediaPlayerEntity):
     """MQTTMediaPlayer"""
 
-    def __init__(self, name, next_action, previous_action, play_action, pause_action, 
-                 vol_down_action, vol_up_action, player_status_keyword, 
+    def __init__(self, name, next_action, previous_action, play_action, pause_action,
+                 stop_action, vol_down_action, vol_up_action, player_status_keyword, 
                  turn_off_action, turn_on_action, select_source_action,
+                 shuffle_set_action, repeat_set_action, mute_action,
                  topics, hass):
         
         """Initialize"""
@@ -128,14 +148,21 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._previous_script = None
         self._play_script = None
         self._pause_script = None
+        self._stop_script = None
         self._vol_down_action = None
         self._vol_up_action = None
         self._vol_script = None
         self._select_source_script = None
         self._turn_off_script = None
         self._turn_on_script = None
+        self._shuffle_set_script = None
+        self._repeat_set_script = None
+        self._mute_script = None
         self._source = None
         self._source_list = None
+        self._shuffle = False
+        self._repeat = RepeatMode.OFF
+        self._muted = False
 
         if next_action:
             self._next_script = Script(hass, next_action, self._name, self._domain)
@@ -149,6 +176,9 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if pause_action:
             self._pause_script = Script(hass, pause_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.PAUSE
+        if stop_action:
+            self._stop_script = Script(hass, stop_action, self._name, self._domain)
+            self._attr_supported_features |= MediaPlayerEntityFeature.STOP
         if vol_down_action:
             self._vol_down_action = Script(hass, vol_down_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_STEP
@@ -164,7 +194,16 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if turn_on_action:
             self._turn_on_script = Script(hass, turn_on_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.TURN_ON
-        
+        if shuffle_set_action:
+            self._shuffle_set_script = Script(hass, shuffle_set_action, self._name, self._domain)
+            self._attr_supported_features |= MediaPlayerEntityFeature.SHUFFLE_SET
+        if repeat_set_action:
+            self._repeat_set_script = Script(hass, repeat_set_action, self._name, self._domain)
+            self._attr_supported_features |= MediaPlayerEntityFeature.REPEAT_SET
+        if mute_action:
+            self._mute_script = Script(hass, mute_action, self._name, self._domain)
+            self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_MUTE
+
         self._player_status_keyword = player_status_keyword
         self._topics = topics
 
@@ -206,6 +245,17 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                 if key == "source_list":
                     self._source_list = value
 
+                if key == "shuffle_mode":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.shuffle_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "repeat_mode":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.repeat_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "muted":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.muted_listener)
+                    self.async_on_remove(result.async_remove)
 
     @property
     def source_list(self):
@@ -271,6 +321,32 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
+    async def shuffle_listener(self, event, updates):
+        """Listen for Shuffle state changes"""
+        result = str(updates.pop().result).lower()
+        self._shuffle = result == "true"
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def repeat_listener(self, event, updates):
+        """Listen for Repeat mode changes"""
+        result = str(updates.pop().result).lower()
+        repeat_map = {
+            "all": RepeatMode.ALL,
+            "one": RepeatMode.ONE,
+            "off": RepeatMode.OFF,
+        }
+        self._repeat = repeat_map.get(result, RepeatMode.OFF)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def muted_listener(self, event, updates):
+        """Listen for Mute state changes"""
+        result = str(updates.pop().result).lower()
+        self._muted = result == "true"
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
     def update(self):
         """ Update the States"""
         if self._player_status_keyword:
@@ -299,6 +375,11 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def volume_level(self):
         """Volume level of the media player (0..1)."""
         return self._volume / 100.0
+    
+    @property
+    def is_volume_muted(self):
+        """Boolean if volume is currently muted."""
+        return self._muted
 
     @property
     def media_content_type(self):
@@ -319,6 +400,16 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def media_album_name(self):
         """Album name of current playing media, music track only."""
         return self._track_album_name
+    
+    @property
+    def shuffle(self):
+        """Boolean if shuffle is enabled."""
+        return self._shuffle
+    
+    @property
+    def repeat(self):
+        """Return current repeat mode."""
+        return self._repeat
 
     @property
     def supported_features(self):
@@ -383,6 +474,12 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             await self._pause_script.async_run(context=self._context)
             self._state = STATE_PAUSED
 
+    async def async_media_stop(self):
+        """Send media stop command to media player."""
+        if(self._stop_script):
+            await self._stop_script.async_run(context=self._context)
+            self._state = STATE_IDLE
+
     async def async_media_next_track(self):
         """Send next track command."""
         if(self._next_script):
@@ -392,6 +489,30 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Send the previous track command."""
         if(self._previous_script):
             await self._previous_script.async_run(context=self._context)
+
+    async def async_set_shuffle(self, shuffle):
+        """Enable/disable shuffle mode."""
+        if(self._shuffle_set_script):
+            await self._shuffle_set_script.async_run({"shuffle": shuffle}, context=self._context)
+            self._shuffle = shuffle
+
+    async def async_set_repeat(self, repeat):
+        """Set repeat mode."""
+        if(self._repeat_set_script):
+            repeat_map = {
+                RepeatMode.ALL: "all",
+                RepeatMode.ONE: "one",
+                RepeatMode.OFF: "off",
+            }
+            mqtt_repeat = repeat_map.get(repeat, "off")
+            await self._repeat_set_script.async_run({"repeat": mqtt_repeat}, context=self._context)
+            self._repeat = repeat
+
+    async def async_mute_volume(self, mute):
+        """Mute the volume."""
+        if(self._mute_script):
+            await self._mute_script.async_run({"mute": mute}, context=self._context)
+            self._muted = mute
 
     async def async_select_source(self, source):
         """Send source select command."""
