@@ -603,7 +603,17 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def repeat(self):
         """Return current repeat mode."""
         return self._repeat
-
+    
+    @property
+    def extra_state_attributes(self):
+        """Return extra state attributes."""
+        attrs = {}
+        if self._track_genre:
+            attrs["genre"] = self._track_genre
+        if self._track_year:
+            attrs["year"] = self._track_year
+        return attrs
+    
     @property
     def supported_features(self):
         """Flag media player features that are supported."""
