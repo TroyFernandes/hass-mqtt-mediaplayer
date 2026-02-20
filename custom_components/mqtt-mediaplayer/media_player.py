@@ -1,5 +1,6 @@
 """ mqtt-mediaplayer """
 import logging
+import json
 import homeassistant.loader as loader
 import hashlib
 import voluptuous as vol
@@ -76,9 +77,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(PLAYERSTATUS_T): cv.template,
                 vol.Optional(PLAYERSTATE_T): cv.template,
                 vol.Optional(CURRENT_SOURCE_T): cv.template,
-                vol.Optional(SOURCE_LIST_T, default=[]): vol.All(
-                    cv.ensure_list, [{vol.Required("id"): cv.string,
-                                      vol.Required("name"): cv.string}]),
+                vol.Optional(SOURCE_LIST_T, default=[]): vol.Any(
+                    cv.string,
+                    vol.All(
+                        cv.ensure_list, [{vol.Required("id"): cv.string,
+                                          vol.Required("name"): cv.string}]),
+                ),
                 vol.Optional(VOLUME_ACTION): cv.SCRIPT_SCHEMA,
                 vol.Optional(SHUFFLE_T): cv.template,
                 vol.Optional(REPEAT_T): cv.template,
