@@ -37,7 +37,8 @@ SOURCE_LIST_T = "source_list"
 SHUFFLE_T = "shuffle_mode"
 REPEAT_T = "repeat_mode"
 MUTED_T = "muted"
-
+MEDIA_DURATION_T = "media_duration"
+MEDIA_POSITION_T = "media_position"
 # END of TOPICS
 
 NEXT_ACTION = "next"
@@ -54,7 +55,9 @@ TURN_OFF_ACTION = "turn_off"
 TURN_ON_ACTION = "turn_on"
 SHUFFLE_SET_ACTION = "shuffle_set"
 REPEAT_SET_ACTION = "repeat_set"
+SEEK_ACTION = "seek"
 MUTE_ACTION = "mute"
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_NAME): cv.string,
@@ -75,6 +78,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(SHUFFLE_T): cv.template,
                 vol.Optional(REPEAT_T): cv.template,
                 vol.Optional(MUTED_T): cv.template,
+                vol.Optional(MEDIA_DURATION_T): cv.template,
+                vol.Optional(MEDIA_POSITION_T): cv.template,
             }),
         vol.Optional(NEXT_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PREVIOUS_ACTION): cv.SCRIPT_SCHEMA,
@@ -88,6 +93,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(SELECT_SOURCE_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(SHUFFLE_SET_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(REPEAT_SET_ACTION): cv.SCRIPT_SCHEMA,
+        vol.Optional(SEEK_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(MUTE_ACTION): cv.SCRIPT_SCHEMA,
         vol.Optional(PLAYERSTATUS_KEYWORD): cv.string,
     }
@@ -111,6 +117,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     select_source_action = config.get(SELECT_SOURCE_ACTION)
     shuffle_set_action = config.get(SHUFFLE_SET_ACTION)
     repeat_set_action = config.get(REPEAT_SET_ACTION)
+    seek_action = config.get(SEEK_ACTION)
     mute_action = config.get(MUTE_ACTION)
     player_status_keyword = config.get(PLAYERSTATUS_KEYWORD)
 
@@ -133,7 +140,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def __init__(self, name, next_action, previous_action, play_action, pause_action,
                  stop_action, vol_down_action, vol_up_action, player_status_keyword, 
                  turn_off_action, turn_on_action, select_source_action,
-                 shuffle_set_action, repeat_set_action, mute_action,
+                 shuffle_set_action, repeat_set_action, seek_action, mute_action,
                  topics, hass):
         
         """Initialize"""
@@ -166,6 +173,9 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._shuffle = False
         self._repeat = RepeatMode.OFF
         self._muted = False
+        self._media_duration = None
+        self._media_position = None
+        self._media_position_updated_at = None
 
         if next_action:
             self._next_script = Script(hass, next_action, self._name, self._domain)
@@ -203,6 +213,9 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if repeat_set_action:
             self._repeat_set_script = Script(hass, repeat_set_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.REPEAT_SET
+        if seek_action:
+            self._seek_script = Script(hass, seek_action, self._name, self._domain)
+            self._attr_supported_features |= MediaPlayerEntityFeature.SEEK
         if mute_action:
             self._mute_script = Script(hass, mute_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_MUTE
@@ -262,6 +275,14 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
                 if key == "muted":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.muted_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "media_duration":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.duration_listener)
+                    self.async_on_remove(result.async_remove)
+
+                if key == "media_position":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.position_listener)
                     self.async_on_remove(result.async_remove)
 
     @property
@@ -369,6 +390,28 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for Mute state changes"""
         result = str(updates.pop().result).lower()
         self._muted = result == "true"
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def duration_listener(self, event, updates):
+        """Listen for media duration changes"""
+        result = updates.pop().result
+        try:
+            self._media_duration = int(result)
+        except (ValueError, TypeError):
+            pass
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def position_listener(self, event, updates):
+        """Listen for media position changes"""
+        result = updates.pop().result
+        try:
+            import datetime
+            self._media_position = int(result)
+            self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
+        except (ValueError, TypeError):
+            pass
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
@@ -538,6 +581,14 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if(self._mute_script):
             await self._mute_script.async_run({"mute": mute}, context=self._context)
             self._muted = mute
+
+    async def async_media_seek(self, position):
+        """Send seek command."""
+        if(self._seek_script):
+            await self._seek_script.async_run({"position": int(position)}, context=self._context)
+            import datetime
+            self._media_position = int(position)
+            self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
 
     async def async_select_source(self, source):
         """Send source select command."""
