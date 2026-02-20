@@ -14,7 +14,8 @@ from homeassistant.const import (
     STATE_OFF,
     STATE_PAUSED,
     STATE_PLAYING,
-    STATE_IDLE
+    STATE_IDLE,
+    STATE_BUFFERING
 )
 import homeassistant.helpers.config_validation as cv
 
@@ -30,6 +31,7 @@ SONGALBUM_T = "song_album"
 SONGVOL_T = "song_volume"
 ALBUMART_T = "album_art"
 PLAYERSTATUS_T = "player_status"
+PLAYERSTATE_T = "player_state"
 CURRENT_SOURCE_T = "source"
 SOURCE_LIST_T = "source_list"
 SHUFFLE_T = "shuffle_mode"
@@ -64,6 +66,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
                 vol.Optional(SONGVOL_T): cv.template,
                 vol.Optional(ALBUMART_T): cv.string,
                 vol.Optional(PLAYERSTATUS_T): cv.template,
+                vol.Optional(PLAYERSTATE_T): cv.template,
                 vol.Optional(CURRENT_SOURCE_T): cv.template,
                 vol.Optional(SOURCE_LIST_T, default=[]): vol.All(
                     cv.ensure_list, [{vol.Required("id"): cv.string,
@@ -234,6 +237,10 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
                     self.async_on_remove(result.async_remove)
 
+                if key == "player_state":
+                    result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.player_state_listener)
+                    self.async_on_remove(result.async_remove)
+
                 if key == "volume":
                     self._vol_script = Script(self.hass, value, self._name, self._domain)
                     self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_SET
@@ -314,10 +321,28 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self.schedule_update_ha_state(True)
 
     async def state_listener(self, event, updates):
-        """Listen for Player State changes"""
+        """Listen for Player State changes (legacy boolean)"""
         result = updates.pop().result
         self._mqtt_player_state = str(result)
         self._state = str(result)
+        if MQTTMediaPlayer:
+            self.schedule_update_ha_state(True)
+
+    async def player_state_listener(self, event, updates):
+        """Listen for richer Player State changes (playing/paused/idle/off/buffering)"""
+        result = str(updates.pop().result).lower()
+        state_map = {
+            "playing": STATE_PLAYING,
+            "paused": STATE_PAUSED,
+            "idle": STATE_IDLE,
+            "off": STATE_OFF,
+            "buffering": STATE_BUFFERING,
+        }
+        self._state = state_map.get(result, result)
+        self._mqtt_player_state = result
+        if result == STATE_PLAYING:
+            import datetime
+            self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
         if MQTTMediaPlayer:
             self.schedule_update_ha_state(True)
 
