@@ -16,7 +16,7 @@ from homeassistant.const import (
     STATE_PAUSED,
     STATE_PLAYING,
     STATE_IDLE,
-    STATE_BUFFERING
+    STATE_BUFFERING,
 )
 import homeassistant.helpers.config_validation as cv
 
@@ -45,6 +45,7 @@ TRACK_NUMBER_T = "track_number"
 GENRE_T = "genre"
 ALBUM_ARTIST_T = "album_artist"
 YEAR_T = "year"
+
 # END of TOPICS
 
 NEXT_ACTION = "next"
@@ -122,7 +123,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     previous_action = config.get(PREVIOUS_ACTION)
     play_action = config.get(PLAY_ACTION)
     pause_action = config.get(PAUSE_ACTION)
-    stop_action = config.get(STOP_ACTION) 
+    stop_action = config.get(STOP_ACTION)
     vol_down_action = config.get(VOL_DOWN_ACTION)
     vol_up_action = config.get(VOL_UP_ACTION)
     volume_action = config.get(VOLUME_ACTION)
@@ -186,6 +187,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         self._turn_on_script = None
         self._shuffle_set_script = None
         self._repeat_set_script = None
+        self._seek_script = None
         self._mute_script = None
         self._source = None
         self._source_list = None
@@ -239,7 +241,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if mute_action:
             self._mute_script = Script(hass, mute_action, self._name, self._domain)
             self._attr_supported_features |= MediaPlayerEntityFeature.VOLUME_MUTE
-
+        
         self._player_status_keyword = player_status_keyword
         self._topics = topics
 
@@ -327,6 +329,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
                 if key == "year":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.year_listener)
+                    self.async_on_remove(result.async_remove)
 
     @property
     def source_list(self):
