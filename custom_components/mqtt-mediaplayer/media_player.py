@@ -125,7 +125,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         entity_name, next_action, previous_action, play_action, pause_action,
         stop_action, vol_down_action, vol_up_action, player_status_keyword, 
         turn_off_action, turn_on_action, select_source_action,
-        shuffle_set_action, repeat_set_action, mute_action,
+        shuffle_set_action, repeat_set_action, seek_action, mute_action,
         topics, hass
     )
 
@@ -468,6 +468,21 @@ class MQTTMediaPlayer(MediaPlayerEntity):
     def media_album_name(self):
         """Album name of current playing media, music track only."""
         return self._track_album_name
+    
+    @property
+    def media_duration(self):
+        """Duration of current playing media in seconds."""
+        return self._media_duration
+
+    @property
+    def media_position(self):
+        """Position of current playing media in seconds."""
+        return self._media_position
+
+    @property
+    def media_position_updated_at(self):
+        """When was the position of the current playing media valid."""
+        return self._media_position_updated_at
     
     @property
     def shuffle(self):
