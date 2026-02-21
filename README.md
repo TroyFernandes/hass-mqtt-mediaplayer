@@ -2,6 +2,8 @@
 
 Allows you to use MQTT topics to fill out the information needed for the Home Assistant Media Player Entity
 
+Was primarily made to work with my [Musicbee-MQTT Plugin](https://github.com/TroyFernandes/Musicbee-MQTT)
+
 ## Supported Services
 
 [Media Player Entity](https://www.home-assistant.io/integrations/media_player/)
@@ -68,10 +70,22 @@ Allows you to use MQTT topics to fill out the information needed for the Home As
 *NOTES:
 
  * volume: put your custom payload here and replace where your value would be with ``"{{volume}}"`` (see config ex.)
- * status_keyword: This is the keyword your player publishes when it is PLAYING. You only need to mention the keyword for playing. For example, my player indicates it is playing by publishing ```playing = true``` to my broker. Therefore I enter ```"true"``` in my configuration.yaml
+ * status_keyword: This is the keyword your player publishes when it is PLAYING.
  * vol_up/vol_down: Setting this disables the volume_set service. Use vol_up/vol_down if your media player doesn't publish a volume level (i.e if your media player only responds to simple "volumeup"/"volumedown" commands. **If you use the "volume" topic you DONT need to use vol_up/vol_down. Same for the reverse**
  
- 
+ ## Example Setup
+
+After installing the custom-intergration, you need to add the custom media player to your [configuration.yaml](#example-configuration.yaml), as well as add the [custom sensors](#example-sensors).
+
+**It is recommended you exclude some sensors being saved to the database (e.g progress) otherwise the database can grow in size**. Adding the below config to your ``configuration.yaml`` will exclude all musicbee sensors:
+
+```
+recorder:
+  exclude:
+    entity_globs:
+      - sensor.musicbee*
+```
+
  
 ## Example configuration.yaml
 
@@ -155,6 +169,61 @@ media_player:
       topic: "musicbee/command"
       payload: "{\"command\":\"select_source\", \"args\":{\"source\":\"{{source}}\"}}"
 
+```
+
+## Example Sensors
+
+```yaml
+  sensor:
+    - state_topic: "musicbee/song/title"
+      name: "Musicbee_Song_Title"
+    - state_topic: "musicbee/song/artist"
+      name: "Musicbee_Song_Artist"
+    - state_topic: "musicbee/song/album"
+      name: "Musicbee_Song_Album"
+    - state_topic: "musicbee/song/albumartist"
+      name: "Musicbee_Song_Album_Artist"
+    - state_topic: "musicbee/song/genre"
+      name: "Musicbee_Song_Genre"
+      icon: "mdi:music-box-multiple"
+    - state_topic: "musicbee/song/year"
+      name: "Musicbee_Song_Year"
+      icon: "mdi:calendar"
+    - state_topic: "musicbee/song/track"
+      name: "Musicbee_Song_Track"
+      icon: "mdi:pound"
+    - state_topic: "musicbee/song/duration"
+      name: "Musicbee_Song_Duration"
+      icon: "mdi:timer-outline"
+      unit_of_measurement: "s"
+    - state_topic: "musicbee/song/content_type"
+      name: "Musicbee_Content_Type"
+      icon: "mdi:file-music"
+    - state_topic: "musicbee/player/volume"
+      name: "Musicbee_Player_Volume"
+      icon: "mdi:volume-medium"
+    - state_topic: "musicbee/player/state"
+      name: "Musicbee_Player_State"
+      icon: "mdi:play-circle"
+    - state_topic: "musicbee/player/playing"
+      name: "Musicbee_Player_Status"
+      icon: "mdi:volume-medium"
+    - state_topic: "musicbee/player/shuffle"
+      name: "Musicbee_Shuffle_Mode"
+      icon: "mdi:shuffle"
+    - state_topic: "musicbee/player/repeat"
+      name: "Musicbee_Repeat_Mode"
+      icon: "mdi:repeat"
+    - state_topic: "musicbee/player/muted"
+      name: "Musicbee_Muted"
+      icon: "mdi:volume-off"
+    - state_topic: "musicbee/player/progress"
+      name: "Musicbee_Player_Progress"
+      icon: "mdi:progress-clock"
+      unit_of_measurement: "s"
+    - state_topic: "musicbee/player/output_device"
+      name: "Musicbee_Output_Device"
+      icon: "mdi:speaker"
 ```
 
 ## Example MQTT Broker
