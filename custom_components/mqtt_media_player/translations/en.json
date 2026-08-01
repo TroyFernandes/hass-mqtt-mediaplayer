@@ -1,0 +1,7 @@
+{
+  "config": {
+    "abort": {
+      "mqtt_discovery_only": "MQTT Media Players are automatically discovered when online and publishing to MQTT."
+    }
+  }
+}
