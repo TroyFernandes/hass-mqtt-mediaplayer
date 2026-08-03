@@ -108,7 +108,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     # Remove old empty device entry if it belonged to mqtt_media_player and has no remaining entities
                     if old_device_id:
                         old_device = dev_reg.async_get(old_device_id)
-                        if old_device and old_device.config_entry_id == self._config_entry.entry_id:
+                        if old_device and self._config_entry.entry_id in old_device.config_entries:
                             entities_on_old_device = er.async_entries_for_device(ent_reg, old_device_id)
                             if not entities_on_old_device:
                                 dev_reg.async_remove_device(old_device_id)
