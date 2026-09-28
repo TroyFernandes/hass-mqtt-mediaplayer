@@ -632,7 +632,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume):
         """Set volume level."""
-        if(self._vol_down_action or self._vol_down_action):
+        if(self._vol_down_action or self._vol_up_action):
             return
         if(self._vol_script):
             await self._vol_script.async_run({"volume": volume}, context=self._context)
