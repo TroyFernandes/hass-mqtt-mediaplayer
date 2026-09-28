@@ -1,5 +1,5 @@
 """Tests for the mqtt-mediaplayer media_player platform."""
-from homeassistant.components.media_player import MediaPlayerEntityFeature
+from homeassistant.components.media_player import MediaPlayerEntityFeature, RepeatMode
 from homeassistant.components.mqtt import async_subscribe
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
 from pytest_homeassistant_custom_component.common import async_setup_component
@@ -276,3 +276,27 @@ async def test_media_seek_round_trip(hass, mqtt_mock):
     assert received == ["90"]
     assert entity.media_position == 90
     assert entity.media_position_updated_at is not None
+
+
+async def test_repeat_shuffle_mute_round_trip(hass, mqtt_mock):
+    """repeat/shuffle/mute handlers publish expected payloads and update state."""
+    await setup_player(hass, mqtt_mock, config=FEATURE_CONFIG)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    received = {"cmd/repeat": [], "cmd/shuffle": [], "cmd/mute": []}
+    for topic, bucket in received.items():
+        await async_subscribe(
+            hass, topic, lambda msg, b=bucket: b.append(_text(msg.payload))
+        )
+
+    await entity.async_set_repeat(RepeatMode.ONE)
+    await entity.async_set_shuffle(True)
+    await entity.async_mute_volume(True)
+    await hass.async_block_till_done()
+
+    assert received["cmd/repeat"] == ["one"]
+    assert received["cmd/shuffle"] == ["True"]
+    assert received["cmd/mute"] == ["True"]
+    assert entity.repeat == RepeatMode.ONE
+    assert entity.shuffle is True
+    assert entity.is_volume_muted is True
