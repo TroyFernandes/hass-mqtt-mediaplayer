@@ -136,3 +136,31 @@ async def test_volume_up_stays_in_range(hass, mqtt_mock):
         )
         await hass.async_block_till_done()
         assert 0.0 <= entity.volume_level <= 1.0
+
+LEAK_CONFIG = {
+    DOMAIN: {
+        **BASE_CONFIG[DOMAIN],
+        "topic": {
+            **BASE_CONFIG[DOMAIN]["topic"],
+            "album_art": "cmd/album_art",
+            "source_list": "cmd/source_list",
+        },
+    }
+}
+
+
+async def test_subscriptions_cleaned_up_on_unload(hass, mqtt_mock):
+    """album_art and source_list MQTT subscriptions are removed when the entity unloads."""
+    assert await async_setup_component(hass, DOMAIN, LEAK_CONFIG)
+    await hass.async_block_till_done()
+    assert mqtt_mock._simple_subscriptions.get("cmd/album_art")
+    assert mqtt_mock._simple_subscriptions.get("cmd/source_list")
+    platform = next(
+        p for p in hass.data[DOMAIN]._platforms.values()
+        if PLAYER in p.entities
+    )
+    await platform.async_remove_entity(PLAYER)
+    await hass.async_block_till_done()
+    assert not mqtt_mock._simple_subscriptions.get("cmd/album_art")
+    assert not mqtt_mock._simple_subscriptions.get("cmd/source_list")
+    assert hass.states.get(PLAYER) is None
