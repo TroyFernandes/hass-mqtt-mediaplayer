@@ -124,6 +124,25 @@ VOLUME_CONFIG = {
 }
 
 
+SOURCE_CONFIG = {
+    DOMAIN: {
+        **BASE_CONFIG[DOMAIN],
+        "topic": {
+            **BASE_CONFIG[DOMAIN]["topic"],
+            "source": "{{ states('input_text.source_id') }}",
+            "source_list": [
+                {"id": "spotify", "name": "Spotify"},
+                {"id": "aux1", "name": "Aux 1"},
+            ],
+        },
+        "select_source": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/source", "payload": "{{ source }}"},
+        },
+    }
+}
+
+
 async def test_volume_up_stays_in_range(hass, mqtt_mock):
     """media_volume_up keeps volume_level within 0..1 after repeated calls."""
     assert await async_setup_component(hass, DOMAIN, VOLUME_CONFIG)
@@ -136,6 +155,31 @@ async def test_volume_up_stays_in_range(hass, mqtt_mock):
         )
         await hass.async_block_till_done()
         assert 0.0 <= entity.volume_level <= 1.0
+
+async def test_select_source_with_string_id(hass, mqtt_mock):
+    """Selecting a source with a non-numeric id publishes the id and updates state."""
+    assert await async_setup_component(hass, DOMAIN, SOURCE_CONFIG)
+    await hass.async_block_till_done()
+
+    received = []
+    await async_subscribe(hass, "cmd/source", lambda msg: received.append(_text(msg.payload)))
+    await hass.services.async_call(
+        "media_player", "select_source", {"entity_id": PLAYER, "source": "Spotify"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+    assert received == ["spotify"]
+    assert entity.source == "Spotify"
+
+
+async def test_source_listener_resolves_string_id(hass, mqtt_mock):
+    """source_listener maps a non-numeric incoming id to its name without raising."""
+    assert await async_setup_component(hass, DOMAIN, SOURCE_CONFIG)
+    await hass.async_block_till_done()
+
+    hass.states.async_set("input_text.source_id", "spotify")
+    await hass.async_block_till_done()
+    assert hass.states.get(PLAYER).attributes["source"] == "Spotify"
 
 LEAK_CONFIG = {
     DOMAIN: {
