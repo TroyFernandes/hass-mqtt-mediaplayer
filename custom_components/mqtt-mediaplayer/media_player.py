@@ -619,7 +619,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         else:
             newvolume = min(self._volume + 5, 100)
             self._volume = newvolume
-            await self.async_set_volume_level(newvolume)
+            await self.async_set_volume_level(newvolume / 100.0)
 
     async def async_volume_down(self):
         """Volume down media player."""
@@ -628,7 +628,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         else:
             newvolume = max(self._volume - 5, 0)
             self._volume = newvolume
-            await self.async_set_volume_level(newvolume)
+            await self.async_set_volume_level(newvolume / 100.0)
 
     async def async_set_volume_level(self, volume):
         """Set volume level."""
