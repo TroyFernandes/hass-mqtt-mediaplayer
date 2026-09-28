@@ -1,7 +1,6 @@
 """ mqtt-mediaplayer """
 import logging
 import json
-import homeassistant.loader as loader
 import hashlib
 import voluptuous as vol
 import base64
