@@ -257,6 +257,18 @@ FEATURE_CONFIG = {
             "action": "mqtt.publish",
             "data": {"topic": "cmd/mute", "payload": "{{ mute }}"},
         },
+        "next": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/next", "payload": "1"},
+        },
+        "previous": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/previous", "payload": "1"},
+        },
+        "select_source": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/source", "payload": "{{ source }}"},
+        },
     }
 }
 
@@ -316,6 +328,51 @@ async def test_repeat_shuffle_mute_round_trip(hass, mqtt_mock):
     assert entity.repeat == RepeatMode.ONE
     assert entity.shuffle is True
     assert entity.is_volume_muted is True
+
+
+async def test_transport_actions_publish(hass, mqtt_mock):
+    """stop/next/previous/turn_on/turn_off actions publish and update state."""
+    await setup_player(hass, mqtt_mock, config=FEATURE_CONFIG)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    topics = ["cmd/stop", "cmd/next", "cmd/previous", "cmd/turn_off", "cmd/turn_on", "cmd/source"]
+    received = {t: [] for t in topics}
+    for topic, bucket in received.items():
+        await async_subscribe(hass, topic, lambda msg, b=bucket: b.append(_text(msg.payload)))
+
+    await entity.async_media_stop()
+    await entity.async_media_next_track()
+    await entity.async_media_previous_track()
+    await entity.async_turn_off()
+    await entity.async_turn_on()
+    await entity.async_select_source("Spotify")
+    await hass.async_block_till_done()
+
+    for topic in topics[:-1]:
+        assert received[topic] == ["1"], topic
+    assert received["cmd/source"] == ["Spotify"]
+    assert entity.state == STATE_IDLE
+
+
+async def test_play_pause_toggles(hass, mqtt_mock):
+    """play_pause plays when idle and pauses when playing."""
+    await setup_player(hass, mqtt_mock, config=FEATURE_CONFIG)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    received = {"cmd/play": [], "cmd/pause": []}
+    for topic, bucket in received.items():
+        await async_subscribe(hass, topic, lambda msg, b=bucket: b.append(_text(msg.payload)))
+
+    await entity.async_media_play_pause()
+    await hass.async_block_till_done()
+    assert entity.state == STATE_PLAYING
+
+    await entity.async_media_play_pause()
+    await hass.async_block_till_done()
+
+    assert received["cmd/play"] == ["play"]
+    assert received["cmd/pause"] == ["pause"]
+    assert entity.state == STATE_PAUSED
 
 
 DYN_SOURCE_CONFIG = {
