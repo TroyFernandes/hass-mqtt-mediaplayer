@@ -375,7 +375,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if self._source_list:
             # Static list: map ID to name
             for entry in self._source_list:
-                if int(entry['id']) == int(result):
+                if str(entry['id']) == str(result):
                     self._source = entry['name']
         else:
             # Dynamic: use value directly as the source name
