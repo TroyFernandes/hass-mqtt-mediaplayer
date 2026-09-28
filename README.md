@@ -258,3 +258,26 @@ musicbee
         genre = Hip Hop
     command = {"command": "pause"}
 ```
+
+## Testing
+
+### With a persistent venv
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install pytest pytest-homeassistant-custom-component pytest-cov
+uv run python -m pytest tests -v
+```
+
+### Throwaway, one off venv
+
+```bash
+uv run --no-project --with pytest --with pytest-homeassistant-custom-component --with pytest-cov pytest tests/test_media_player.py --cov=custom_components/mqtt-mediaplayer --cov-report=term-missing
+```
+
+### Coverage
+
+```bash
+uv run --no-project --with pytest --with pytest-homeassistant-custom-component --with pytest-cov pytest tests/test_media_player.py --cov=custom_components/mqtt-mediaplayer --cov-report=term-missing --cov-report=html
+```
