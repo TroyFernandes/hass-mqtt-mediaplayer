@@ -47,8 +47,8 @@ async def test_setup(hass, mqtt_mock):
     assert state.name == "Test Player"
 
     feats = state.attributes["supported_features"]
-    assert MediaPlayerEntityFeature.PLAY in feats
-    assert MediaPlayerEntityFeature.PAUSE in feats
+    assert feats & MediaPlayerEntityFeature.PLAY
+    assert feats & MediaPlayerEntityFeature.PAUSE
 
 
 async def test_media_title_updates(hass, mqtt_mock):
