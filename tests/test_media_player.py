@@ -324,7 +324,6 @@ async def test_dynamic_source_list_from_mqtt(hass, mqtt_mock):
     """Publishing a JSON array to the source_list topic updates source_list."""
     await setup_player(hass, mqtt_mock, config=DYN_SOURCE_CONFIG)
 
-    assert hass.states.get(PLAYER).attributes.get("source_list", []) == []
     async_fire_mqtt_message(hass, "cmd/source_list", json.dumps(["Spotify", "Aux 1", "TuneIn"]))
     await hass.async_block_till_done()
     assert hass.states.get(PLAYER).attributes["source_list"] == [
@@ -332,3 +331,77 @@ async def test_dynamic_source_list_from_mqtt(hass, mqtt_mock):
         "Aux 1",
         "TuneIn",
     ]
+
+
+ALL_TOPICS_CONFIG = {
+    DOMAIN: {
+        **BASE_CONFIG[DOMAIN],
+        "topic": {
+            **BASE_CONFIG[DOMAIN]["topic"],
+            "song_album": "{{ states('input_text.album') }}",
+            "song_volume": "{{ states('input_text.volume') }}",
+            "album_art": "cmd/album_art",
+            "source": "{{ states('input_text.source') }}",
+            "source_list": "cmd/source_list",
+            "shuffle_mode": "{{ states('input_select.shuffle') }}",
+            "repeat_mode": "{{ states('input_select.repeat') }}",
+            "muted": "{{ states('input_select.muted') }}",
+            "media_duration": "{{ states('input_text.duration') }}",
+            "media_position": "{{ states('input_text.position') }}",
+            "content_type": "{{ states('input_text.content_type') }}",
+            "track_number": "{{ states('input_text.track_number') }}",
+            "genre": "{{ states('input_text.genre') }}",
+            "album_artist": "{{ states('input_text.album_artist') }}",
+            "year": "{{ states('input_text.year') }}",
+        },
+        "select_source": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/source", "payload": "{{ source }}"},
+        },
+    }
+}
+
+
+async def test_publish_to_every_topic_updates_state(hass, mqtt_mock):
+    """Publishing to every configured topic updates the corresponding attribute."""
+    await setup_player(hass, mqtt_mock, config=ALL_TOPICS_CONFIG)
+
+    hass.states.async_set("input_text.title", "Song One")
+    hass.states.async_set("input_text.artist", "The Band")
+    hass.states.async_set("input_text.album", "Album One")
+    hass.states.async_set("input_text.volume", "55")
+    hass.states.async_set("input_select.state", "playing")
+    hass.states.async_set("input_text.source", "Living Room")
+    hass.states.async_set("input_select.shuffle", "true")
+    hass.states.async_set("input_select.repeat", "all")
+    hass.states.async_set("input_select.muted", "true")
+    hass.states.async_set("input_text.duration", "245")
+    hass.states.async_set("input_text.position", "87")
+    hass.states.async_set("input_text.content_type", "music")
+    hass.states.async_set("input_text.track_number", "4")
+    hass.states.async_set("input_text.genre", "Rock")
+    hass.states.async_set("input_text.album_artist", "Album Artists")
+    hass.states.async_set("input_text.year", "1999")
+    async_fire_mqtt_message(hass, "cmd/album_art", "AAEC")
+    async_fire_mqtt_message(hass, "cmd/source_list", json.dumps(["Spotify", "Aux 1"]))
+    await hass.async_block_till_done()
+
+    attrs = hass.states.get(PLAYER).attributes
+    assert attrs["media_title"] == "Song One"
+    assert attrs["media_artist"] == "The Band"
+    assert attrs["media_album_name"] == "Album One"
+    assert attrs["volume_level"] == 0.55
+    assert hass.states.get(PLAYER).state == STATE_PLAYING
+    assert attrs["source"] == "Living Room"
+    assert attrs["source_list"] == ["Spotify", "Aux 1"]
+    assert attrs["shuffle"] is True
+    assert attrs["repeat"] == RepeatMode.ALL
+    assert attrs["is_volume_muted"] is True
+    assert attrs["media_duration"] == 245
+    assert attrs["media_position"] == 87
+    assert attrs["media_position_updated_at"] is not None
+    assert attrs["media_content_type"] == "music"
+    assert attrs["media_track"] == 4
+    assert attrs["genre"] == "Rock"
+    assert attrs["media_album_artist"] == "Album Artists"
+    assert attrs["year"] == "1999"
