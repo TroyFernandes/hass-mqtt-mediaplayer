@@ -259,3 +259,20 @@ async def test_action_config_sets_feature_flags(hass, mqtt_mock):
         MediaPlayerEntityFeature.VOLUME_MUTE,
     ):
         assert feats & flag, f"missing {flag.name}"
+
+
+async def test_media_seek_round_trip(hass, mqtt_mock):
+    """media_seek publishes the position and updates media_position."""
+    await setup_player(hass, mqtt_mock, config=FEATURE_CONFIG)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    received = []
+    await async_subscribe(hass, "cmd/seek", lambda msg: received.append(_text(msg.payload)))
+    await hass.services.async_call(
+        "media_player", "media_seek", {"entity_id": PLAYER, "seek_position": 90}, blocking=True
+    )
+    await hass.async_block_till_done()
+
+    assert received == ["90"]
+    assert entity.media_position == 90
+    assert entity.media_position_updated_at is not None
