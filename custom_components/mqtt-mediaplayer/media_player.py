@@ -266,7 +266,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                     self.async_on_remove(result.async_remove)
 
                 if key == "album_art":
-                    await mqtt.async_subscribe(self.hass, value, self.albumart_listener)
+                    unsub = await mqtt.async_subscribe(self.hass, value, self.albumart_listener)
+                    self.async_on_remove(unsub)
 
                 if key == "player_status":
                     result = async_track_template_result(self.hass, [TrackTemplate(value, None)], self.state_listener)
@@ -287,7 +288,8 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                 if key == "source_list":
                     if isinstance(value, str):
                         # MQTT topic - subscribe directly
-                        await mqtt.async_subscribe(self.hass, value, self.source_list_mqtt_listener)
+                        unsub = await mqtt.async_subscribe(self.hass, value, self.source_list_mqtt_listener)
+                        self.async_on_remove(unsub)
                     elif isinstance(value, list):
                         self._source_list = value
 
