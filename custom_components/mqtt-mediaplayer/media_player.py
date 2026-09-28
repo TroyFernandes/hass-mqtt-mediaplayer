@@ -406,7 +406,14 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for Player State changes (legacy boolean)"""
         result = updates.pop().result
         self._mqtt_player_state = str(result)
-        self._state = str(result)
+        if self._player_status_keyword:
+            self._state = (
+                STATE_PLAYING
+                if self._mqtt_player_state == self._player_status_keyword
+                else STATE_PAUSED
+            )
+        else:
+            self._state = self._mqtt_player_state
         self.schedule_update_ha_state(True)
 
     async def player_state_listener(self, event, updates):
@@ -494,14 +501,6 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for year changes"""
         self._track_year = str(updates.pop().result)
         self.schedule_update_ha_state(True)
-
-    def update(self):
-        """ Update the States"""
-        if self._player_status_keyword:
-            if self._mqtt_player_state == self._player_status_keyword:
-                self._state = STATE_PLAYING
-            else:
-                self._state = STATE_PAUSED
 
     @property
     def should_poll(self):
