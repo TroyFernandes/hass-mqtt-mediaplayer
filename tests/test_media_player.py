@@ -1,4 +1,6 @@
 """Tests for the mqtt-mediaplayer media_player platform."""
+import base64
+import hashlib
 import json
 
 from homeassistant.components.media_player import MediaPlayerEntityFeature, RepeatMode
@@ -476,3 +478,82 @@ async def test_publish_to_every_topic_updates_state(hass, mqtt_mock):
     assert attrs["genre"] == "Rock"
     assert attrs["media_album_artist"] == "Album Artists"
     assert attrs["year"] == "1999"
+
+
+async def test_album_art_image_and_hash(hass, mqtt_mock):
+    """Base64 art from the album_art topic is served by async_get_media_image."""
+    await setup_player(hass, mqtt_mock, config=LEAK_CONFIG)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    image, content_type = await entity.async_get_media_image()
+    assert image is None and content_type is None
+
+    art = base64.b64encode(b"fake-jpeg-bytes")
+    async_fire_mqtt_message(hass, "cmd/album_art", art)
+    await hass.async_block_till_done()
+
+    image, content_type = await entity.async_get_media_image()
+    assert image == b"fake-jpeg-bytes"
+    assert content_type == "image/jpeg"
+    assert entity.media_image_hash == hashlib.md5(b"fake-jpeg-bytes").hexdigest()[:5]
+
+
+async def test_update_uses_status_keyword(hass, mqtt_mock):
+    """update() maps the player status keyword to playing/paused."""
+    config = {DOMAIN: {**BASE_CONFIG[DOMAIN], "status_keyword": "PLAYING"}}
+    await setup_player(hass, mqtt_mock, config=config)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    entity._mqtt_player_state = "PLAYING"
+    entity.update()
+    assert entity.state == STATE_PLAYING
+
+    entity._mqtt_player_state = "STOPPED"
+    entity.update()
+    assert entity.state == STATE_PAUSED
+
+
+async def test_media_track_invalid_returns_none(hass, mqtt_mock):
+    """media_track returns None for blank or non-numeric track numbers."""
+    await setup_player(hass, mqtt_mock)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    entity._track_number = ""
+    assert entity.media_track is None
+
+    entity._track_number = "not-a-number"
+    assert entity.media_track is None
+
+
+async def test_volume_actions_take_priority(hass, mqtt_mock):
+    """Configured vol_up/vol_down actions publish; set_volume_level is skipped."""
+    config = {
+        DOMAIN: {
+            **BASE_CONFIG[DOMAIN],
+            "vol_up": {"action": "mqtt.publish",
+                      "data": {"topic": "cmd/vol_up", "payload": "1"}},
+            "vol_down": {"action": "mqtt.publish",
+                         "data": {"topic": "cmd/vol_down", "payload": "1"}},
+        }
+    }
+    await setup_player(hass, mqtt_mock, config=config)
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    received = {"cmd/vol_up": [], "cmd/vol_down": []}
+    for topic, bucket in received.items():
+        await async_subscribe(
+            hass, topic, lambda msg, b=bucket: b.append(_text(msg.payload))
+        )
+
+    await hass.services.async_call(
+        "media_player", "volume_up", {"entity_id": PLAYER}, blocking=True
+    )
+    await hass.services.async_call(
+        "media_player", "volume_down", {"entity_id": PLAYER}, blocking=True
+    )
+    await entity.async_set_volume_level(0.8)
+    await hass.async_block_till_done()
+
+    assert received["cmd/vol_up"] == ["1"]
+    assert received["cmd/vol_down"] == ["1"]
+    assert entity.volume_level == 0.0
