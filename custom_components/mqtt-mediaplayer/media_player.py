@@ -344,15 +344,13 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         """Listen for the Track Title change"""
         result = updates.pop().result
         self._track_name = result
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def artist_listener(self, event, updates):
         """Listen for the Artist Name change"""
         result = updates.pop().result
         self._track_artist = result
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def source_list_listener(self, event, updates):
         """Listen for the Source change (legacy)"""
@@ -367,8 +365,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
                 self._source_list_names = devices
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def source_listener(self, event, updates):
         """Listen for the Source change"""
@@ -381,15 +378,13 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         else:
             # Dynamic: use value directly as the source name
             self._source = str(result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def album_listener(self, event, updates):
         """Listen for the Album Name change"""
         result = updates.pop().result
         self._track_album_name = result
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def volume_listener(self, event, updates):
         """Listen for Player Volume changes"""
@@ -399,22 +394,19 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._volume = int(result)
         except (ValueError, TypeError):
             pass
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def albumart_listener(self, msg):
         """Listen for the Album Art change"""
         self._album_art = base64.b64decode(msg.payload.replace("\n", ""))
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def state_listener(self, event, updates):
         """Listen for Player State changes (legacy boolean)"""
         result = updates.pop().result
         self._mqtt_player_state = str(result)
         self._state = str(result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def player_state_listener(self, event, updates):
         """Listen for richer Player State changes (playing/paused/idle/off/buffering)"""
@@ -431,15 +423,13 @@ class MQTTMediaPlayer(MediaPlayerEntity):
         if result == STATE_PLAYING:
             import datetime
             self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def shuffle_listener(self, event, updates):
         """Listen for Shuffle state changes"""
         result = str(updates.pop().result).lower()
         self._shuffle = result == "true"
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def repeat_listener(self, event, updates):
         """Listen for Repeat mode changes"""
@@ -450,15 +440,13 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             "off": RepeatMode.OFF,
         }
         self._repeat = repeat_map.get(result, RepeatMode.OFF)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def muted_listener(self, event, updates):
         """Listen for Mute state changes"""
         result = str(updates.pop().result).lower()
         self._muted = result == "true"
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def duration_listener(self, event, updates):
         """Listen for media duration changes"""
@@ -467,8 +455,7 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._media_duration = int(result)
         except (ValueError, TypeError):
             pass
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def position_listener(self, event, updates):
         """Listen for media position changes"""
@@ -479,39 +466,33 @@ class MQTTMediaPlayer(MediaPlayerEntity):
             self._media_position_updated_at = datetime.datetime.now(datetime.timezone.utc)
         except (ValueError, TypeError):
             pass
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def content_type_listener(self, event, updates):
         """Listen for content type changes"""
         result = str(updates.pop().result).lower()
         self._content_type = MediaType.MUSIC if result == "music" else result
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def track_number_listener(self, event, updates):
         """Listen for track number changes"""
         self._track_number = str(updates.pop().result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def genre_listener(self, event, updates):
         """Listen for genre changes"""
         self._track_genre = str(updates.pop().result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def album_artist_listener(self, event, updates):
         """Listen for album artist changes"""
         self._track_album_artist = str(updates.pop().result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     async def year_listener(self, event, updates):
         """Listen for year changes"""
         self._track_year = str(updates.pop().result)
-        if MQTTMediaPlayer:
-            self.schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """ Update the States"""
