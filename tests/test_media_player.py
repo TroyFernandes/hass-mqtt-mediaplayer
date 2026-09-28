@@ -1,8 +1,10 @@
 """Tests for the mqtt-mediaplayer media_player platform."""
+import json
+
 from homeassistant.components.media_player import MediaPlayerEntityFeature, RepeatMode
 from homeassistant.components.mqtt import async_subscribe
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
-from pytest_homeassistant_custom_component.common import async_setup_component
+from pytest_homeassistant_custom_component.common import async_fire_mqtt_message, async_setup_component
 
 DOMAIN = "media_player"
 PLAYER = "media_player.test_player"
@@ -300,3 +302,33 @@ async def test_repeat_shuffle_mute_round_trip(hass, mqtt_mock):
     assert entity.repeat == RepeatMode.ONE
     assert entity.shuffle is True
     assert entity.is_volume_muted is True
+
+
+DYN_SOURCE_CONFIG = {
+    DOMAIN: {
+        **BASE_CONFIG[DOMAIN],
+        "topic": {
+            **BASE_CONFIG[DOMAIN]["topic"],
+            "source": "{{ states('input_text.source_id') }}",
+            "source_list": "cmd/source_list",
+        },
+        "select_source": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/source", "payload": "{{ source }}"},
+        },
+    }
+}
+
+
+async def test_dynamic_source_list_from_mqtt(hass, mqtt_mock):
+    """Publishing a JSON array to the source_list topic updates source_list."""
+    await setup_player(hass, mqtt_mock, config=DYN_SOURCE_CONFIG)
+
+    assert hass.states.get(PLAYER).attributes.get("source_list", []) == []
+    async_fire_mqtt_message(hass, "cmd/source_list", json.dumps(["Spotify", "Aux 1", "TuneIn"]))
+    await hass.async_block_till_done()
+    assert hass.states.get(PLAYER).attributes["source_list"] == [
+        "Spotify",
+        "Aux 1",
+        "TuneIn",
+    ]
