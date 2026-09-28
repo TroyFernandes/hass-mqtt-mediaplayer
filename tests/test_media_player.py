@@ -32,9 +32,9 @@ def _text(payload):
     return payload.decode() if isinstance(payload, bytes) else payload
 
 
-async def setup_player(hass, mqtt_mock):
+async def setup_player(hass, mqtt_mock, config=BASE_CONFIG):
     """Set up the platform and return the created entity state."""
-    assert await async_setup_component(hass, DOMAIN, BASE_CONFIG)
+    assert await async_setup_component(hass, DOMAIN, config)
     await hass.async_block_till_done()
     state = hass.states.get(PLAYER)
     assert state is not None, "media player entity was not created"
@@ -208,3 +208,54 @@ async def test_subscriptions_cleaned_up_on_unload(hass, mqtt_mock):
     assert not mqtt_mock._simple_subscriptions.get("cmd/album_art")
     assert not mqtt_mock._simple_subscriptions.get("cmd/source_list")
     assert hass.states.get(PLAYER) is None
+
+
+FEATURE_CONFIG = {
+    DOMAIN: {
+        **BASE_CONFIG[DOMAIN],
+        "stop": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/stop", "payload": "1"},
+        },
+        "turn_on": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/turn_on", "payload": "1"},
+        },
+        "turn_off": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/turn_off", "payload": "1"},
+        },
+        "shuffle_set": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/shuffle", "payload": "{{ shuffle }}"},
+        },
+        "repeat_set": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/repeat", "payload": "{{ repeat }}"},
+        },
+        "seek": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/seek", "payload": "{{ position }}"},
+        },
+        "mute": {
+            "action": "mqtt.publish",
+            "data": {"topic": "cmd/mute", "payload": "{{ mute }}"},
+        },
+    }
+}
+
+
+async def test_action_config_sets_feature_flags(hass, mqtt_mock):
+    """Each configured action adds its MediaPlayerEntityFeature flag."""
+    state = await setup_player(hass, mqtt_mock, config=FEATURE_CONFIG)
+    feats = state.attributes["supported_features"]
+    for flag in (
+        MediaPlayerEntityFeature.STOP,
+        MediaPlayerEntityFeature.TURN_ON,
+        MediaPlayerEntityFeature.TURN_OFF,
+        MediaPlayerEntityFeature.SHUFFLE_SET,
+        MediaPlayerEntityFeature.REPEAT_SET,
+        MediaPlayerEntityFeature.SEEK,
+        MediaPlayerEntityFeature.VOLUME_MUTE,
+    ):
+        assert feats & flag, f"missing {flag.name}"
