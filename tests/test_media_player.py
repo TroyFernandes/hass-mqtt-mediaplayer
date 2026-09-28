@@ -158,6 +158,20 @@ async def test_volume_up_stays_in_range(hass, mqtt_mock):
         await hass.async_block_till_done()
         assert 0.0 <= entity.volume_level <= 1.0
 
+
+async def test_volume_down_stays_in_range(hass, mqtt_mock):
+    """media_volume_down keeps volume_level within 0..1 after repeated calls."""
+    assert await async_setup_component(hass, DOMAIN, VOLUME_CONFIG)
+    await hass.async_block_till_done()
+    entity = next(iter(hass.data[DOMAIN]._entities.values()))
+
+    for _ in range(5):
+        await hass.services.async_call(
+            "media_player", "volume_down", {"entity_id": PLAYER}, blocking=True
+        )
+        await hass.async_block_till_done()
+        assert 0.0 <= entity.volume_level <= 1.0
+
 async def test_select_source_with_string_id(hass, mqtt_mock):
     """Selecting a source with a non-numeric id publishes the id and updates state."""
     assert await async_setup_component(hass, DOMAIN, SOURCE_CONFIG)
