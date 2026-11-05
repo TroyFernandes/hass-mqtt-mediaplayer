@@ -6,7 +6,7 @@ import voluptuous as vol
 import base64
 from homeassistant.exceptions import TemplateError, NoEntitySpecifiedError
 from homeassistant.helpers.script import Script
-from homeassistant.helpers.event import TrackTemplate, async_track_template_result, async_track_state_change
+from homeassistant.helpers.event import TrackTemplate, async_track_template_result
 from homeassistant.components.media_player import PLATFORM_SCHEMA, MediaPlayerEntity, MediaPlayerEntityFeature, MediaType, RepeatMode
 import homeassistant.components.mqtt as mqtt
 from homeassistant.const import (
